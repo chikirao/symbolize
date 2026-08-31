@@ -11,6 +11,8 @@ export interface SymbolDef {
   id: string
   label: string
   category: SymbolCategory
+  /** Which canvas style the routine uses, so the renderer only sets that one. */
+  paint: 'fill' | 'stroke'
   draw: (ctx: CanvasRenderingContext2D, s: number, sw: number) => void
 }
 
@@ -57,6 +59,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'circle',
     label: 'CIRCLE',
     category: 'basic',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       const r = Math.max(sw * 0.5, s / 2 - sw / 2)
       ctx.lineWidth = sw
@@ -69,6 +72,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'dot',
     label: 'DOT FILLED',
     category: 'basic',
+    paint: 'fill',
     draw: (ctx, s) => {
       ctx.beginPath()
       ctx.arc(0, 0, s / 2, 0, Math.PI * 2)
@@ -79,6 +83,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'square',
     label: 'SQUARE',
     category: 'basic',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       ctx.lineWidth = sw
       const h = Math.max(sw * 0.5, s / 2 - sw / 2)
@@ -91,6 +96,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'squareFilled',
     label: 'SQUARE FILLED',
     category: 'basic',
+    paint: 'fill',
     draw: (ctx, s) => {
       ctx.fillRect(-s / 2, -s / 2, s, s)
     },
@@ -99,6 +105,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'roundedSquare',
     label: 'ROUNDED SQUARE',
     category: 'basic',
+    paint: 'fill',
     draw: (ctx, s) => {
       roundRectPath(ctx, -s / 2, -s / 2, s, s, s * 0.28)
       ctx.fill()
@@ -108,6 +115,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'triangle',
     label: 'TRIANGLE',
     category: 'basic',
+    paint: 'fill',
     draw: (ctx, s) => {
       const h = s / 2
       ctx.beginPath()
@@ -122,6 +130,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'diamond',
     label: 'DIAMOND',
     category: 'basic',
+    paint: 'fill',
     draw: (ctx, s) => {
       const h = s / 2
       ctx.beginPath()
@@ -137,6 +146,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'line',
     label: 'LINE',
     category: 'basic',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       ctx.lineWidth = sw
       ctx.beginPath()
@@ -150,6 +160,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'arrowRight',
     label: 'ARROW RIGHT',
     category: 'directional',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       ctx.lineWidth = sw
       const h = s / 2
@@ -164,6 +175,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'arrowUpRight',
     label: 'ARROW UP-RIGHT',
     category: 'directional',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       ctx.lineWidth = sw
       const h = s / 2
@@ -178,6 +190,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'chevron',
     label: 'CHEVRON',
     category: 'directional',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       ctx.lineWidth = sw
       const h = s / 2
@@ -192,6 +205,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'doubleChevron',
     label: 'DOUBLE CHEVRON',
     category: 'directional',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       ctx.lineWidth = sw
       const h = s / 2
@@ -211,6 +225,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'cross',
     label: 'X CROSS',
     category: 'graphic',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       ctx.lineWidth = sw
       const h = Math.max(sw * 0.5, s / 2 - sw / 2)
@@ -226,6 +241,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'plus',
     label: 'PLUS',
     category: 'graphic',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       ctx.lineWidth = sw
       const h = s / 2
@@ -241,6 +257,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'ring',
     label: 'RING',
     category: 'graphic',
+    paint: 'stroke',
     draw: (ctx, s) => {
       const w = Math.max(s * 0.2, 0.35)
       ctx.lineWidth = w
@@ -253,6 +270,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'crosshair',
     label: 'CROSSHAIR',
     category: 'graphic',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       ctx.lineWidth = sw
       const h = s / 2
@@ -276,6 +294,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'fourDots',
     label: 'FOUR DOTS',
     category: 'graphic',
+    paint: 'fill',
     draw: (ctx, s) => {
       const o = s * 0.26
       const r = s * 0.15
@@ -296,6 +315,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'checker',
     label: 'CHECKER',
     category: 'graphic',
+    paint: 'fill',
     draw: (ctx, s) => {
       const q = s / 2
       ctx.fillRect(-q, -q, q, q)
@@ -306,6 +326,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'star',
     label: 'STAR',
     category: 'graphic',
+    paint: 'fill',
     draw: (ctx, s) => {
       const R = s / 2
       const r = R * 0.44
@@ -326,6 +347,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'slash',
     label: 'SLASH',
     category: 'graphic',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       ctx.lineWidth = sw
       const h = s / 2
@@ -339,6 +361,7 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
     id: 'brackets',
     label: 'BRACKETS',
     category: 'graphic',
+    paint: 'stroke',
     draw: (ctx, s, sw) => {
       ctx.lineWidth = sw
       const h = s / 2

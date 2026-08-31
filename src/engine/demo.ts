@@ -50,19 +50,34 @@ export function buildDemoImage(w = 900, h = 1120): HTMLCanvasElement {
   ctx.globalCompositeOperation = 'source-in'
 
   const g = ctx.createLinearGradient(w * 0.18, 0, w * 0.92, h)
-  g.addColorStop(0, '#ffffff')
-  g.addColorStop(0.45, '#b9b9b9')
-  g.addColorStop(1, '#1c1c1c')
+  g.addColorStop(0, '#e2e2e2')
+  g.addColorStop(0.45, '#8f8f8f')
+  g.addColorStop(1, '#101010')
   ctx.fillStyle = g
   ctx.fillRect(0, 0, w, h)
 
   const rg = ctx.createRadialGradient(cx - headR * 0.5, headY - headR * 0.55, headR * 0.08, cx, headY, headR * 2.4)
-  rg.addColorStop(0, 'rgba(255,255,255,0.95)')
-  rg.addColorStop(0.5, 'rgba(255,255,255,0.12)')
-  rg.addColorStop(1, 'rgba(0,0,0,0.55)')
+  rg.addColorStop(0, 'rgba(255,255,255,0.6)')
+  rg.addColorStop(0.42, 'rgba(255,255,255,0.05)')
+  rg.addColorStop(1, 'rgba(0,0,0,0.5)')
   ctx.globalCompositeOperation = 'source-atop'
   ctx.fillStyle = rg
   ctx.fillRect(0, 0, w, h)
+
+  // dark hair mass + cheek shadow: gives the default view real tonal structure
+  ctx.globalCompositeOperation = 'source-atop'
+  ctx.fillStyle = 'rgba(6,6,6,0.82)'
+  ctx.beginPath()
+  ctx.ellipse(cx, headY - headR * 0.44, headR * 0.99, headR * 0.82, 0, Math.PI, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = 'rgba(0,0,0,0.34)'
+  ctx.beginPath()
+  ctx.ellipse(cx + headR * 0.48, headY + headR * 0.18, headR * 0.42, headR * 0.66, -0.2, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'
+  ctx.beginPath()
+  ctx.ellipse(cx - headR * 0.3, headY + headR * 0.22, headR * 0.34, headR * 0.5, 0.15, 0, Math.PI * 2)
+  ctx.fill()
 
   // subtle horizontal banding gives the halftone something to bite on
   ctx.globalAlpha = 0.09

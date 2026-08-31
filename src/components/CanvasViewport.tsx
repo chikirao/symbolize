@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
-import { renderComposite } from '../engine/renderer'
+import type { RenderStats } from '../types/editor'
+import { renderComposite, renderCompositeAsync } from '../engine/renderer'
+import { estimateCellCount } from '../engine/grid'
 import { runGlitchOverlay } from '../ui/glitch'
 import { AsciiBox } from './Primitives'
 
@@ -10,12 +12,16 @@ const QUALITY_BUDGET: Record<string, number> = {
   high: 3_600_000,
 }
 
+/** Above this many grid cells the preview switches to the chunked renderer. */
+const HEAVY_CELLS = 26_000
+
 export function CanvasViewport(props: { onPickFile: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const origRef = useRef<HTMLCanvasElement>(null)
   const glitchRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef(0)
+  const jobRef = useRef(0)
 
   const settings = useEditor((s) => s.settings)
   const maps = useEditor((s) => s.maps)
@@ -49,7 +55,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const stats = renderComposite({
+    const req = {
       ctx,
       outputWidth: w,
       outputHeight: h,
@@ -58,10 +64,12 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
       settings,
       original: image.canvas,
       customSymbols,
-    })
-    setStats(stats)
-    setRenderMs(stats.ms)
-    setRenderRes([w, h])
+    }
+
+    // Heavy grids would freeze the tab for a second or more: draw those in
+    // chunks so the UI keeps responding and the status bar can report progress.
+    const heavy = estimateCellCount(settings, maps.imageWidth, maps.imageHeight) > HEAVY_CELLS
+    const token = ++jobRef.current
 
     // original layer used by before/after + show-original
     const orig = origRef.current
@@ -79,6 +87,28 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
         octx.drawImage(image.canvas, 0, 0, w, h)
       }
     }
+
+    const finish = (stats: RenderStats) => {
+      setStats(stats)
+      setRenderMs(stats.ms)
+      setRenderRes([w, h])
+    }
+
+    if (heavy) {
+      const setStatus = useEditor.getState().setStatus
+      setStatus({ kind: 'busy', message: 'RENDERING...', progress: 0 })
+      void renderCompositeAsync(req, (p) => {
+        if (jobRef.current !== token) return
+        setStatus({ kind: 'busy', message: 'RENDERING...', progress: p })
+      }).then((stats) => {
+        if (jobRef.current !== token) return
+        finish(stats)
+        setStatus({ kind: 'ready', message: 'READY', progress: -1 })
+      })
+      return
+    }
+
+    finish(renderComposite(req))
   }, [maps, image, settings, customSymbols, interacting, view.quality, setStats])
 
   useEffect(() => {

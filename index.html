@@ -66,7 +66,7 @@
           if (reduced) { done(); return; }
           var cols = Math.min(220, Math.ceil(window.innerWidth / 7.2));
           var rows = Math.min(120, Math.ceil(window.innerHeight / 13.6));
-          var pool = '#%+/X><:.▓▒░ =*-|\';
+          var pool = '#%+/X><:.▓▒░ =*-|';
           noiseEl.style.display = 'block';
           var frames = 0;
           function step() {
@@ -83,14 +83,24 @@
           }
           requestAnimationFrame(step);
         }
+        function teardown() {
+          timers.forEach(function (f) { f(); });
+          noiseEl.style.display = 'none';
+          noiseEl.textContent = '';
+          boot.style.opacity = '0';
+          setTimeout(function () { if (boot && boot.parentNode) boot.parentNode.removeChild(boot); }, 140);
+        }
+        // Safety net: rAF is paused in background tabs, so never let the boot
+        // screen outlive the app it is covering.
+        var hardStop = setTimeout(teardown, 2600);
         window.__bootFinish = function () {
           var wait = Math.max(0, MIN - (Date.now() - start));
           setTimeout(function () {
             timers.forEach(function (f) { f(); });
             if (log) log.textContent = lines.join('\n');
             noiseBurst(function () {
-              boot.style.opacity = '0';
-              setTimeout(function () { if (boot && boot.parentNode) boot.parentNode.removeChild(boot); }, 140);
+              clearTimeout(hardStop);
+              teardown();
             });
           }, wait);
         };

@@ -415,16 +415,25 @@ export function drawElements(
 ): void {
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  let lastColorKey = -1
+  let lastFillKey = -1
+  let lastStrokeKey = -1
+  let lastAlpha = -1
   const end = Math.min(to, buf.count)
 
   for (let i = from; i < end; i++) {
     const size = buf.size[i]
+    // sub-pixel symbols cost as much as visible ones and contribute nothing
+    if (size * scale < 0.3) continue
+
     const rot = buf.rot[i]
     const cos = Math.cos(rot)
     const sin = Math.sin(rot)
     ctx.setTransform(scale * cos, scale * sin, -scale * sin, scale * cos, scale * buf.x[i], scale * buf.y[i])
-    ctx.globalAlpha = buf.a[i]
+    const alpha = buf.a[i]
+    if (alpha !== lastAlpha) {
+      ctx.globalAlpha = alpha
+      lastAlpha = alpha
+    }
 
     const r = buf.r[i]
     const g = buf.g[i]
@@ -449,11 +458,15 @@ export function drawElements(
         }
       }
     } else if (entry.builtin) {
-      if (key !== lastColorKey) {
-        const c = colorString(r, g, b)
-        ctx.fillStyle = c
-        ctx.strokeStyle = c
-        lastColorKey = key
+      // set only the style the routine actually consumes
+      if (entry.builtin.paint === 'fill') {
+        if (key !== lastFillKey) {
+          ctx.fillStyle = colorString(r, g, b)
+          lastFillKey = key
+        }
+      } else if (key !== lastStrokeKey) {
+        ctx.strokeStyle = colorString(r, g, b)
+        lastStrokeKey = key
       }
       entry.builtin.draw(ctx, size, Math.max(size * strokeWeight, 0.15))
     }
@@ -640,10 +653,21 @@ export function renderComposite(req: RenderRequest): RenderStats {
   }
 }
 
+/**
+ * Yields to the browser between chunks. rAF keeps the UI smooth while the tab
+ * is visible; the timeout makes sure a background tab still finishes its export
+ * instead of stalling on a paused animation frame.
+ */
 const nextFrame = () =>
   new Promise<void>((resolve) => {
-    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve())
-    else setTimeout(resolve, 0)
+    let done = false
+    const finish = () => {
+      if (done) return
+      done = true
+      resolve()
+    }
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(finish)
+    setTimeout(finish, 24)
   })
 
 /** Chunked render — used for large exports so the UI keeps responding. */
