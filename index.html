@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SYMBOL_HALFTONE.exe</title>
+    <meta name="description" content="Symbol / shape halftone portrait generator. Local, in-browser, no uploads." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23000'/%3E%3Ctext x='8' y='12' font-family='monospace' font-size='12' fill='%23fff' text-anchor='middle'%3E%23%3C/text%3E%3C/svg%3E" />
+    <style>
+      html, body { margin: 0; padding: 0; background: #000; color: #fff; }
+      #boot {
+        position: fixed; inset: 0; z-index: 9999; background: #000; color: #fff;
+        font-family: "Ubuntu Mono", "JetBrains Mono", "Courier New", monospace;
+        font-size: 13px; line-height: 1.45;
+        display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+        padding: 0 0 0 max(24px, 6vw); white-space: pre; letter-spacing: 0.02em;
+        transition: opacity 120ms linear;
+      }
+      #boot .dim { color: #6b6b6b; }
+      #boot-noise { position: fixed; inset: 0; z-index: 10000; background: #000; color: #fff;
+        font-family: "Ubuntu Mono", monospace; font-size: 13px; line-height: 1.05; letter-spacing: 0.02em;
+        white-space: pre; overflow: hidden; display: none; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="boot" role="status" aria-live="polite"><span id="boot-title">INITIALIZING SYMBOL ENGINE...</span>
+<span id="boot-bar" class="dim">[                    ]</span>
+<span id="boot-log"></span></div>
+    <div id="boot-noise" aria-hidden="true"></div>
+    <div id="root"></div>
+    <script>
+      (function () {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var boot = document.getElementById('boot');
+        var bar = document.getElementById('boot-bar');
+        var log = document.getElementById('boot-log');
+        var title = document.getElementById('boot-title');
+        var noiseEl = document.getElementById('boot-noise');
+        var start = Date.now();
+        var repeat = false;
+        try { repeat = sessionStorage.getItem('sh_booted') === '1'; sessionStorage.setItem('sh_booted', '1'); } catch (e) {}
+        var MIN = reduced ? 0 : (repeat ? 320 : 620);
+        var lines = ['> loading renderer', '> loading symbol library', '> allocating canvas', '> initializing interface', '> ready'];
+        var glyphs = '░▒▓█';
+        var i = 0, timers = [];
+        if (reduced) {
+          title.textContent = 'loading...';
+          bar.textContent = '';
+        } else {
+          var t1 = setInterval(function () {
+            var s = '[';
+            for (var k = 0; k < 20; k++) s += glyphs[(Math.random() * 4) | 0];
+            s += ']';
+            bar.textContent = s;
+          }, 55);
+          timers.push(function () { clearInterval(t1); });
+          var t2 = setInterval(function () {
+            if (i < lines.length) { log.textContent += (i ? '\n' : '') + lines[i]; i++; }
+          }, Math.max(70, MIN / (lines.length + 1)));
+          timers.push(function () { clearInterval(t2); });
+        }
+        function noiseBurst(done) {
+          if (reduced) { done(); return; }
+          var cols = Math.min(220, Math.ceil(window.innerWidth / 7.2));
+          var rows = Math.min(120, Math.ceil(window.innerHeight / 13.6));
+          var pool = '#%+/X><:.▓▒░ =*-|\';
+          noiseEl.style.display = 'block';
+          var frames = 0;
+          function step() {
+            frames++;
+            var density = frames < 4 ? 0.85 : Math.max(0, 0.85 - (frames - 3) * 0.22);
+            var out = '';
+            for (var r = 0; r < rows; r++) {
+              for (var c = 0; c < cols; c++) out += Math.random() < density ? pool[(Math.random() * pool.length) | 0] : ' ';
+              out += '\n';
+            }
+            noiseEl.textContent = out;
+            if (frames < 8) requestAnimationFrame(step);
+            else { noiseEl.style.display = 'none'; noiseEl.textContent = ''; done(); }
+          }
+          requestAnimationFrame(step);
+        }
+        window.__bootFinish = function () {
+          var wait = Math.max(0, MIN - (Date.now() - start));
+          setTimeout(function () {
+            timers.forEach(function (f) { f(); });
+            if (log) log.textContent = lines.join('\n');
+            noiseBurst(function () {
+              boot.style.opacity = '0';
+              setTimeout(function () { if (boot && boot.parentNode) boot.parentNode.removeChild(boot); }, 140);
+            });
+          }, wait);
+        };
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
