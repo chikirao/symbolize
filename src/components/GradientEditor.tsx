@@ -53,14 +53,13 @@ export function GradientEditor(props: {
             />
             <input
               type="range"
-              className="flex-1 h-3 accent-white"
+              className="ascii-range flex-1"
               min={0}
               max={1}
               step={0.01}
               value={s.pos}
               aria-label={`stop ${i} position`}
               onChange={(e) => update(s.id, { pos: parseFloat(e.target.value) })}
-              style={{ opacity: 0.85 }}
             />
             <span className="text-fg2 text-xxs w-[30px] text-right tabular-nums">
               {s.pos.toFixed(2)}

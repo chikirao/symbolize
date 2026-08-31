@@ -291,6 +291,37 @@
     color: var(--fg2);
   }
 
+  /* --- bare range inputs (gradient stops) --------------------------- */
+  input[type='range'].ascii-range {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    height: 12px;
+    cursor: ew-resize;
+  }
+  input[type='range'].ascii-range::-webkit-slider-runnable-track {
+    height: 1px;
+    background: var(--line2);
+  }
+  input[type='range'].ascii-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 7px;
+    height: 11px;
+    margin-top: -5px;
+    background: var(--fg);
+    border: 0;
+  }
+  input[type='range'].ascii-range::-moz-range-track {
+    height: 1px;
+    background: var(--line2);
+  }
+  input[type='range'].ascii-range::-moz-range-thumb {
+    width: 7px;
+    height: 11px;
+    background: var(--fg);
+    border: 0;
+  }
+
   /* --- select ------------------------------------------------------ */
   .sel-wrap {
     display: inline-flex;
