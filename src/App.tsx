@@ -155,7 +155,7 @@ export default function App() {
 
       {dropping && (
         <div className="fixed inset-0 z-[200] bg-black/85 flex items-center justify-center pointer-events-none">
-          <div className="text-fg text-center whitespace-pre leading-tight">
+          <div className="ascii-art text-fg text-center">
             {`┌──────────────────────────────────┐
 │                                  │
 │        DROP IMAGE TO BEGIN       │

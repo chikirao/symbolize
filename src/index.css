@@ -399,6 +399,16 @@
     background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
   }
 
+  /* Multi-line box-drawing art must come from a single font: the Ubuntu Mono
+     webfont has no box-drawing glyphs, so mixing it with the fallback gives two
+     different advance widths and the frames come out ragged. */
+  .ascii-art {
+    font-family: 'DejaVu Sans Mono', 'Cascadia Mono', Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
+    white-space: pre;
+    line-height: 1.15;
+  }
+
   .hr {
     color: var(--line);
     white-space: pre;

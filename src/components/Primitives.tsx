@@ -97,7 +97,7 @@ export function Hint(props: { text: string; children: React.ReactNode }) {
     >
       {props.children}
       {open && (
-        <span className="tip left-0 top-full mt-1 text-xs2">
+        <span className="tip ascii-art left-0 top-full mt-1 text-xs2">
           <span className="block text-fg3">┌{'─'.repeat(props.text.length + 2)}┐</span>
           <span className="block">│ {props.text} │</span>
           <span className="block text-fg3">└{'─'.repeat(props.text.length + 2)}┘</span>

@@ -346,7 +346,7 @@ function EmptyState(props: { onPickFile: () => void }) {
       <button
         type="button"
         onClick={props.onPickFile}
-        className="relative text-center leading-tight whitespace-pre text-fg2 hover:text-fg"
+        className="ascii-art relative text-center text-fg2 hover:text-fg"
       >
         {`┌──────────────────────────────────┐
 │                                  │
