@@ -1,4 +1,4 @@
-# SYMBOLIZE.exe
+# symbolize
 
 Live: https://chikirao.github.io/symbolize/
 

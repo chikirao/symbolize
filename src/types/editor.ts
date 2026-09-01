@@ -1,4 +1,4 @@
-/* Central data model for the Symbolize engine. */
+/* Central data model for the symbolize engine. */
 
 export type GridMode = 'square' | 'staggered' | 'hex' | 'random' | 'adaptive'
 export type SourceMode = 'luminance' | 'alpha' | 'combined'

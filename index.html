@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SYMBOLIZE.exe</title>
+    <title>symbolize</title>
     <meta name="description" content="Symbol / shape halftone portrait generator. Local, in-browser, no uploads." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -46,7 +46,7 @@
     </style>
   </head>
   <body>
-    <div id="boot" role="status" aria-live="polite"><div id="boot-stage"><span id="boot-title">INITIALIZING SYMBOLIZE...</span>
+    <div id="boot" role="status" aria-live="polite"><div id="boot-stage"><span id="boot-title">initializing symbolize...</span>
 <span id="boot-bar" class="dim">[                    ]</span>
 <span id="boot-log"></span></div>
       <div id="boot-prompt"><div id="boot-press"></div></div>
@@ -125,7 +125,7 @@
           // the log stays where it is, finished: full bar, all lines printed
           if (log) log.textContent = lines.join('\n');
           if (bar) bar.textContent = '[████████████████████]';
-          scramble(title, 'SYMBOLIZE READY.', 260);
+          scramble(title, 'symbolize ready.', 260);
           // armed straight away: a key pressed while the prompt is still
           // resolving must not fall through a gap and be lost
           promptAt = Date.now();
