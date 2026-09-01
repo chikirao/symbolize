@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
 import { scrambleSubtree } from '../ui/scramble'
+import { replayIntro } from '../ui/intro'
 import { buildDemoImage } from '../engine/demo'
 import { buildFilename, downloadBlob, renderExport } from '../engine/export'
 import type { PreviewQuality } from '../types/editor'
@@ -185,6 +186,8 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
               checked: view.quality === q,
               onClick: () => setView({ quality: q }),
             })),
+            { label: '', divider: true },
+            { label: 'REPLAY INTRO', onClick: () => void replayIntro() },
           ]}
         />
         <Menu

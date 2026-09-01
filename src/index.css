@@ -443,6 +443,19 @@
   .panel-reveal {
     animation: reveal 150ms ease-out;
   }
+
+  /* the interface waits, laid out but unlit, until the intro sweeps over it */
+  .intro-armed {
+    opacity: 0 !important;
+    pointer-events: none;
+  }
+
+  .intro-wave {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    pointer-events: none;
+  }
 }
 
 @keyframes blink {

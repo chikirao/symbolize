@@ -8,6 +8,7 @@ import { PresetPanel } from './components/PresetPanel'
 import { SymbolLibrary } from './components/SymbolLibrary'
 import { StatusBar } from './components/StatusBar'
 import { AsciiBox } from './components/Primitives'
+import { armIntro, runIntro } from './ui/intro'
 import { buildDemoImage } from './engine/demo'
 import {
   imageFileFromTransfer,
@@ -29,8 +30,53 @@ export default function App() {
   /* ---------------- first run ---------------- */
   useEffect(() => {
     loadImageSource(buildDemoImage(), 'DEMO_BUST.PROC')
-    const w = window as unknown as { __bootFinish?: () => void }
+
+    const root = document.getElementById('root')
+    const w = window as unknown as {
+      __bootFinish?: () => void
+      __introRun?: () => void
+      __bootAlive?: boolean
+    }
+    if (!root) return
+
+    // The interface is laid out immediately but stays dark: the boot screen
+    // hands over on a keypress and the wave lights it up top to bottom.
+    armIntro(root)
+    let started = false
+    const start = () => {
+      if (started) return
+      started = true
+      void runIntro(root).then(() => {
+        setStatus({
+          kind: 'ready',
+          message: 'SYSTEM ONLINE :: DROP AN IMAGE, PRESS CTRL+V OR PICK A PRESET',
+          progress: -1,
+        })
+        window.setTimeout(() => {
+          if (useEditor.getState().status.kind === 'ready') {
+            setStatus({ kind: 'ready', message: 'READY', progress: -1 })
+          }
+        }, 4200)
+      })
+    }
+    w.__introRun = start
     w.__bootFinish?.()
+
+    // Failsafe: if the boot screen is gone and nothing kicked the intro off
+    // (an older cached index.html, a script error), light the app up anyway.
+    const poll = window.setInterval(() => {
+      if (!w.__bootAlive) {
+        start()
+        clearInterval(poll)
+      }
+    }, 400)
+    const hard = window.setTimeout(start, 12_000)
+
+    return () => {
+      clearInterval(poll)
+      clearTimeout(hard)
+      if (w.__introRun === start) w.__introRun = undefined
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
