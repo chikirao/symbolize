@@ -354,9 +354,9 @@ function EmptyState(props: { onPickFile: () => void }) {
 │                                  │
 │          DROP IMAGE HERE         │
 │                                  │
-│        JPG / PNG / WEBP          │
+│      JPG / PNG / WEBP / GIF      │
 │                                  │
-│               [+]                │
+│     CLICK  OR  PRESS CTRL+V      │
 │                                  │
 └──────────────────────────────────┘`}
       </button>

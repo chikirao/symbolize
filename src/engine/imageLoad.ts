@@ -4,6 +4,18 @@ export const MAX_SOURCE_SIDE = 6000
 
 export const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
+/**
+ * Anything the browser can decode into a canvas is fair game as a source —
+ * clipboard payloads in particular are often GIF or BMP. SVG is excluded on
+ * purpose: it is the format used for custom symbols.
+ */
+export function isSupportedImageFile(file: File): boolean {
+  const type = (file.type || '').toLowerCase()
+  if (type === 'image/svg+xml') return false
+  if (type.startsWith('image/')) return true
+  return /\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(file.name)
+}
+
 function loadImageElement(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -36,9 +48,8 @@ function readAsText(file: File | Blob): Promise<string> {
  * the file is read with FileReader and drawn locally.
  */
 export async function loadImageFile(file: File): Promise<HTMLCanvasElement> {
-  const type = file.type || ''
-  if (!ACCEPTED_IMAGE_TYPES.includes(type) && !/\.(png|jpe?g|webp)$/i.test(file.name)) {
-    throw new Error('UNSUPPORTED FORMAT: ' + (type || file.name))
+  if (!isSupportedImageFile(file)) {
+    throw new Error('UNSUPPORTED FORMAT: ' + (file.type || file.name || 'UNKNOWN'))
   }
   const url = await readAsDataURL(file)
   const img = await loadImageElement(url)
@@ -92,6 +103,41 @@ function normaliseSvg(text: string): { src: string; width: number; height: numbe
     width: w,
     height: h,
   }
+}
+
+/** Pulls the first usable image out of a paste or drop payload. */
+export function imageFileFromTransfer(data: DataTransfer | null): File | null {
+  if (!data) return null
+  const items = data.items ? Array.from(data.items) : []
+  for (const item of items) {
+    if (item.kind !== 'file') continue
+    const file = item.getAsFile()
+    if (file && isSupportedImageFile(file)) return file
+  }
+  const files = data.files ? Array.from(data.files) : []
+  for (const file of files) {
+    if (isSupportedImageFile(file)) return file
+  }
+  return null
+}
+
+export function transferHasText(data: DataTransfer | null): boolean {
+  if (!data) return false
+  return Array.from(data.items || []).some((i) => i.kind === 'string')
+}
+
+/** Reads an image straight from the system clipboard, when the browser allows it. */
+export async function readClipboardImage(): Promise<File> {
+  if (!navigator.clipboard?.read) throw new Error('CLIPBOARD READ UNAVAILABLE :: PRESS CTRL+V')
+  const items = await navigator.clipboard.read()
+  for (const item of items) {
+    const type = item.types.find((t) => t.startsWith('image/') && t !== 'image/svg+xml')
+    if (!type) continue
+    const blob = await item.getType(type)
+    const ext = type.split('/')[1] || 'png'
+    return new File([blob], 'clipboard.' + ext, { type })
+  }
+  throw new Error('NO IMAGE IN CLIPBOARD')
 }
 
 export async function loadCustomSymbol(file: File): Promise<CustomSymbolDef> {

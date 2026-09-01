@@ -104,7 +104,7 @@ function MaskPreview() {
   )
 }
 
-export function SourcePanel(props: { onPickFile: () => void }) {
+export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void }) {
   const image = useEditor((s) => s.image)
   const maps = useEditor((s) => s.maps)
   const clearImage = useEditor((s) => s.clearImage)
@@ -160,6 +160,14 @@ export function SourcePanel(props: { onPickFile: () => void }) {
         </button>
         <button
           type="button"
+          className="btn text-xxs"
+          title="paste an image from the clipboard (Ctrl+V works anywhere)"
+          onClick={props.onPaste}
+        >
+          PASTE
+        </button>
+        <button
+          type="button"
           className="btn text-xxs btn-danger"
           disabled={!image}
           onClick={clearImage}
@@ -167,6 +175,7 @@ export function SourcePanel(props: { onPickFile: () => void }) {
           ! CLEAR
         </button>
       </div>
+      <div className="text-fg3 text-xxs mt-1">DROP A FILE OR PRESS CTRL+V ANYWHERE</div>
     </AsciiBox>
   )
 }

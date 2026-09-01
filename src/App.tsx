@@ -9,7 +9,12 @@ import { SymbolLibrary } from './components/SymbolLibrary'
 import { StatusBar } from './components/StatusBar'
 import { AsciiBox } from './components/Primitives'
 import { buildDemoImage } from './engine/demo'
-import { loadImageFile } from './engine/imageLoad'
+import {
+  imageFileFromTransfer,
+  loadImageFile,
+  readClipboardImage,
+  transferHasText,
+} from './engine/imageLoad'
 
 export default function App() {
   const fileRef = useRef<HTMLInputElement>(null)
@@ -31,7 +36,7 @@ export default function App() {
 
   /* ---------------- image loading ---------------- */
   const handleFile = useCallback(
-    async (file: File | undefined | null) => {
+    async (file: File | undefined | null, label?: string) => {
       if (!file) return
       setStatus({ kind: 'busy', message: 'READING IMAGE...', progress: -1 })
       try {
@@ -40,7 +45,7 @@ export default function App() {
         const canvas = await loadImageFile(file)
         setStatus({ kind: 'busy', message: 'BUILDING SOURCE MAP...', progress: -1 })
         await new Promise((r) => setTimeout(r, 16))
-        loadImageSource(canvas, file.name.toUpperCase())
+        loadImageSource(canvas, (label || file.name || 'UNTITLED').toUpperCase())
         setStatus({ kind: 'ready', message: 'READY', progress: -1 })
       } catch (err) {
         setStatus({
@@ -54,6 +59,42 @@ export default function App() {
   )
 
   const pickFile = useCallback(() => fileRef.current?.click(), [])
+
+  /* ---------------- clipboard ---------------- */
+
+  /** Ctrl+V anywhere on the page drops a clipboard image straight in. */
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const data = e.clipboardData
+      const file = imageFileFromTransfer(data)
+      if (!file) return
+      const target = e.target as HTMLElement | null
+      const inField =
+        !!target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      // a text field pasting text keeps its normal behaviour
+      if (inField && transferHasText(data)) return
+      e.preventDefault()
+      void handleFile(file, 'CLIPBOARD.' + (file.type.split('/')[1] || 'PNG'))
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [handleFile])
+
+  /** Explicit button: asks the browser for the clipboard, which may be blocked. */
+  const pasteFromClipboard = useCallback(async () => {
+    setStatus({ kind: 'busy', message: 'READING CLIPBOARD...', progress: -1 })
+    try {
+      const file = await readClipboardImage()
+      await handleFile(file, 'CLIPBOARD.' + (file.type.split('/')[1] || 'PNG'))
+    } catch (err) {
+      setStatus({
+        kind: 'error',
+        message: String((err as Error).message || 'CLIPBOARD BLOCKED') + ' :: TRY CTRL+V',
+        progress: -1,
+      })
+    }
+  }, [handleFile, setStatus])
 
   /* ---------------- window drag & drop ---------------- */
   useEffect(() => {
@@ -111,12 +152,12 @@ export default function App() {
 
   return (
     <div className="h-full w-full flex flex-col bg-black text-fg min-w-[900px]">
-      <Toolbar onPickFile={pickFile} />
+      <Toolbar onPickFile={pickFile} onPaste={pasteFromClipboard} />
 
       <div className="flex-1 min-h-0 flex gap-4 p-4 pt-3">
         {/* left column */}
         <div className="hidden lg:flex w-[268px] shrink-0 flex-col gap-4 min-h-0">
-          <SourcePanel onPickFile={pickFile} />
+          <SourcePanel onPickFile={pickFile} onPaste={pasteFromClipboard} />
           <AsciiBox
             title="ELEMENTS"
             className="flex-1 min-h-0 flex flex-col"
@@ -160,7 +201,7 @@ export default function App() {
 │                                  │
 │        DROP IMAGE TO BEGIN       │
 │                                  │
-│        JPG / PNG / WEBP          │
+│     JPG / PNG / WEBP / GIF       │
 │                                  │
 └──────────────────────────────────┘`}
           </div>

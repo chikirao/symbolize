@@ -96,7 +96,7 @@ function Menu(props: { label: string; items: Item[] }) {
   )
 }
 
-export function Toolbar(props: { onPickFile: () => void }) {
+export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) {
   const store = useEditor
   const image = useEditor((s) => s.image)
   const view = useEditor((s) => s.view)
@@ -149,6 +149,7 @@ export function Toolbar(props: { onPickFile: () => void }) {
           label="FILE"
           items={[
             { label: 'LOAD IMAGE...', onClick: props.onPickFile },
+            { label: 'PASTE IMAGE  CTRL+V', onClick: props.onPaste },
             {
               label: 'LOAD DEMO',
               onClick: () => loadImageSource(buildDemoImage(), 'DEMO_BUST.PROC'),
