@@ -260,6 +260,8 @@
   .slider-wrap {
     position: relative;
     display: block;
+    width: max-content;
+    max-width: 100%;
     cursor: ew-resize;
     user-select: none;
   }
@@ -267,6 +269,11 @@
     color: var(--line2);
     white-space: pre;
     letter-spacing: -0.02em;
+    display: block;
+    overflow: hidden;
+    text-overflow: clip;
+    width: max-content;
+    max-width: 100%;
   }
   .slider-bar b {
     color: var(--fg);

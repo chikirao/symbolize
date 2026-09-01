@@ -42,18 +42,19 @@ export function GradientEditor(props: {
       />
       <div className="mt-1 space-y-[1px]">
         {sorted.map((s, i) => (
-          <div key={s.id} className="flex items-center gap-2 group">
-            <span className="text-fg3 text-xxs w-[14px] select-none">
+          <div key={s.id} className="flex items-center gap-1 group">
+            <span className="text-fg3 text-xxs w-[13px] shrink-0 select-none">
               {i.toString().padStart(2, '0')}
             </span>
             <ColorField
+              compact
               value={s.color}
               ariaLabel={`stop ${i} colour`}
               onChange={(v) => update(s.id, { color: v.toUpperCase() })}
             />
             <input
               type="range"
-              className="ascii-range flex-1"
+              className="ascii-range flex-1 min-w-0"
               min={0}
               max={1}
               step={0.01}
@@ -61,12 +62,12 @@ export function GradientEditor(props: {
               aria-label={`stop ${i} position`}
               onChange={(e) => update(s.id, { pos: parseFloat(e.target.value) })}
             />
-            <span className="text-fg2 text-xxs w-[30px] text-right tabular-nums">
+            <span className="text-fg2 text-xxs w-[28px] shrink-0 text-right tabular-nums">
               {s.pos.toFixed(2)}
             </span>
             <button
               type="button"
-              className="text-fg3 hover:text-fg text-xxs px-1 disabled:opacity-30"
+              className="text-fg3 hover:text-fg text-xxs shrink-0 pl-1 disabled:opacity-30"
               disabled={props.stops.length <= 2}
               aria-label={`remove stop ${i}`}
               onClick={() => remove(s.id)}

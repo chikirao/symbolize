@@ -309,11 +309,13 @@ export function ColorField(props: {
   value: string
   onChange: (v: string) => void
   ariaLabel?: string
+  /** swatch only — for rows too narrow to also carry the hex */
+  compact?: boolean
 }) {
   return (
-    <label className="color-field text-xs2" title={props.value}>
+    <label className="color-field text-xs2 shrink-0" title={props.value}>
       <span className="color-swatch" style={{ background: props.value }} />
-      <span className="text-fg2 uppercase">{props.value}</span>
+      {!props.compact && <span className="text-fg2 uppercase">{props.value}</span>}
       <input
         type="color"
         aria-label={props.ariaLabel || 'colour'}

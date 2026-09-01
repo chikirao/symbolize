@@ -523,11 +523,14 @@ function paintBackground(
   ctx.fillRect(0, 0, w, h)
 }
 
-let silCache: { key: string; canvas: HTMLCanvasElement } | null = null
+/* --- mask field shared by the silhouette and the original-layer clip --- */
 
-function silhouetteCanvas(maps: SourceMaps, settings: EditorSettings): HTMLCanvasElement {
-  const mk = settings.mask
-  const key = [
+let fieldCache: { key: string; maps: SourceMaps; data: Uint8Array } | null = null
+let silCache: { key: string; canvas: HTMLCanvasElement } | null = null
+let alphaCache: { key: string; canvas: HTMLCanvasElement } | null = null
+
+function maskKey(maps: SourceMaps, mk: EditorSettings['mask']): string {
+  return [
     maps.width,
     maps.height,
     maps.imageWidth,
@@ -536,21 +539,19 @@ function silhouetteCanvas(maps: SourceMaps, settings: EditorSettings): HTMLCanva
     mk.feather,
     mk.invert,
     mk.enabled,
-    mk.silhouette.color,
     mk.tolerance,
     mk.contiguous,
     mk.picks.map((p) => p.color + '@' + p.x.toFixed(3) + ',' + p.y.toFixed(3)).join(';'),
   ].join('|')
-  if (silCache && silCache.key === key) return silCache.canvas
+}
 
-  const c = document.createElement('canvas')
-  c.width = maps.width
-  c.height = maps.height
-  const cx = c.getContext('2d')!
-  const img = cx.createImageData(maps.width, maps.height)
-  const d = img.data
-  const [fr, fg, fb] = hexToRgb(mk.silhouette.color)
+/** The mask after threshold, feather and invert, as 0..255 at analysis size. */
+function maskField(maps: SourceMaps, mk: EditorSettings['mask']): Uint8Array {
+  const key = maskKey(maps, mk)
+  if (fieldCache && fieldCache.maps === maps && fieldCache.key === key) return fieldCache.data
+
   const n = maps.width * maps.height
+  const data = new Uint8Array(n)
   const selection = getSelectionMask(maps, mk)
   for (let i = 0; i < n; i++) {
     const mv = mk.enabled
@@ -563,19 +564,59 @@ function silhouetteCanvas(maps: SourceMaps, settings: EditorSettings): HTMLCanva
           : 0
         : smoothstep(mk.threshold - mk.feather, mk.threshold + mk.feather, mv)
     if (mk.invert && mk.enabled) f = 1 - f
+    data[i] = f * 255
+  }
+  fieldCache = { key, maps, data }
+  return data
+}
+
+function fieldToCanvas(
+  maps: SourceMaps,
+  field: Uint8Array,
+  r: number,
+  g: number,
+  b: number,
+): HTMLCanvasElement {
+  const c = document.createElement('canvas')
+  c.width = maps.width
+  c.height = maps.height
+  const cx = c.getContext('2d')!
+  const img = cx.createImageData(maps.width, maps.height)
+  const d = img.data
+  for (let i = 0; i < field.length; i++) {
     const p = i * 4
-    d[p] = fr
-    d[p + 1] = fg
-    d[p + 2] = fb
-    d[p + 3] = f * 255
+    d[p] = r
+    d[p + 1] = g
+    d[p + 2] = b
+    d[p + 3] = field[i]
   }
   cx.putImageData(img, 0, 0)
-  silCache = { key, canvas: c }
   return c
+}
+
+function silhouetteCanvas(maps: SourceMaps, settings: EditorSettings): HTMLCanvasElement {
+  const mk = settings.mask
+  const key = maskKey(maps, mk) + '|' + mk.silhouette.color
+  if (silCache && silCache.key === key) return silCache.canvas
+  const [r, g, b] = hexToRgb(mk.silhouette.color)
+  const canvas = fieldToCanvas(maps, maskField(maps, mk), r, g, b)
+  silCache = { key, canvas }
+  return canvas
+}
+
+/** White stencil of the mask, used to knock the original layer in or out. */
+function maskAlphaCanvas(maps: SourceMaps, mk: EditorSettings['mask']): HTMLCanvasElement {
+  const key = maskKey(maps, mk)
+  if (alphaCache && alphaCache.key === key) return alphaCache.canvas
+  const canvas = fieldToCanvas(maps, maskField(maps, mk), 255, 255, 255)
+  alphaCache = { key, canvas }
+  return canvas
 }
 
 export function invalidateSilhouetteCache(): void {
   silCache = null
+  alphaCache = null
+  fieldCache = null
 }
 
 /* ------------------------------------------------------------------ */
@@ -622,11 +663,33 @@ function paintUnderlays(req: RenderRequest): void {
   }
 
   if (settings.layers.original.visible && req.original) {
+    const clip = settings.layers.original.clip
+    let source: CanvasImageSource = req.original
+
+    if (clip !== 'none') {
+      // Cut the mask out of the photo (or keep only it) so whatever the
+      // background layer painted shows through the hole.
+      const tmp = document.createElement('canvas')
+      tmp.width = w
+      tmp.height = h
+      const tctx = tmp.getContext('2d')
+      if (tctx) {
+        tctx.imageSmoothingEnabled = true
+        tctx.imageSmoothingQuality = 'high'
+        tctx.drawImage(req.original, 0, 0, w, h)
+        tctx.globalCompositeOperation =
+          clip === 'outside-mask' ? 'destination-out' : 'destination-in'
+        tctx.drawImage(maskAlphaCanvas(req.maps, settings.mask), 0, 0, w, h)
+        tctx.globalCompositeOperation = 'source-over'
+        source = tmp
+      }
+    }
+
     ctx.globalCompositeOperation = BLEND_MAP[settings.layers.original.blend]
     ctx.globalAlpha = settings.layers.original.opacity
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(req.original, 0, 0, w, h)
+    ctx.drawImage(source, 0, 0, w, h)
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'
   }

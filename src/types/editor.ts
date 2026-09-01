@@ -21,6 +21,8 @@ export type MaskSource = 'alpha' | 'luminance' | 'combined' | 'color'
 export type EdgeShapeMode = 'inside' | 'edges' | 'both'
 export type BlendMode = 'normal' | 'multiply' | 'screen' | 'overlay' | 'lighten' | 'darken'
 export type BackgroundMode = 'transparent' | 'white' | 'black' | 'custom'
+/** How the original photo layer relates to the mask. */
+export type OriginalClip = 'none' | 'outside-mask' | 'inside-mask'
 export type PreviewQuality = 'low' | 'medium' | 'high'
 
 export interface ColorPick {
@@ -146,7 +148,7 @@ export interface EditorSettings {
   }
   layers: {
     background: { mode: BackgroundMode; color: string }
-    original: { visible: boolean; opacity: number; blend: BlendMode }
+    original: { visible: boolean; opacity: number; blend: BlendMode; clip: OriginalClip }
     pattern: { visible: boolean; opacity: number; blend: BlendMode }
   }
 }

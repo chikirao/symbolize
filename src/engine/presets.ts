@@ -88,7 +88,7 @@ export const DEFAULT_SETTINGS: EditorSettings = {
   random: { seed: 183742 },
   layers: {
     background: { mode: 'black', color: '#0b0b0b' },
-    original: { visible: false, opacity: 0.3, blend: 'normal' },
+    original: { visible: false, opacity: 0.3, blend: 'normal', clip: 'none' },
     pattern: { visible: true, opacity: 1, blend: 'normal' },
   },
 }

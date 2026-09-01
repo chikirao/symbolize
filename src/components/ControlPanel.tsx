@@ -497,6 +497,24 @@ export function ControlPanel() {
           options={BLEND_OPTIONS}
           width={9}
         />
+        <ParamSelect
+          path="layers.original.clip"
+          label="ORIGINAL CLIP"
+          width={12}
+          options={[
+            { value: 'none', label: 'FULL' },
+            { value: 'outside-mask', label: 'CUT MASK OUT' },
+            { value: 'inside-mask', label: 'MASK ONLY' },
+          ]}
+          hint="Cut the masked area out of the photo so the background shows through it."
+        />
+        <div className="pl-3 text-xxs text-fg3 leading-snug">
+          {settings.layers.original.clip === 'outside-mask'
+            ? 'PHOTO MINUS THE MASK. THE HOLE SHOWS THE BACKGROUND COLOR.'
+            : settings.layers.original.clip === 'inside-mask'
+              ? 'ONLY THE MASKED PART OF THE PHOTO IS KEPT.'
+              : 'PHOTO UNDER THE PATTERN, UNTOUCHED.'}
+        </div>
         <div className="hr text-xxs my-1 select-none">── PATTERN {'─'.repeat(40)}</div>
         <ParamToggle path="layers.pattern.visible" label="SHOW PATTERN" />
         <ParamSlider

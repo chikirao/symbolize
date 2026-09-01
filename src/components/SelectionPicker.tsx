@@ -48,8 +48,8 @@ export function SelectionPicker() {
 
       <div className="mt-1 space-y-[1px]">
         {picks.map((p, i) => (
-          <div key={i} className="flex items-center gap-2 group">
-            <span className="text-fg3 text-xxs w-[14px]">{String(i).padStart(2, '0')}</span>
+          <div key={i} className="flex items-center gap-1 group">
+            <span className="text-fg3 text-xxs w-[13px] shrink-0">{String(i).padStart(2, '0')}</span>
             <ColorField
               value={p.color}
               ariaLabel={`selected colour ${i}`}
@@ -58,12 +58,12 @@ export function SelectionPicker() {
                 setParam('mask.picks', next)
               }}
             />
-            <span className="text-fg3 text-xxs ml-auto tabular-nums">
+            <span className="text-fg3 text-xxs ml-auto shrink-0 tabular-nums">
               {(p.x * 100).toFixed(0)},{(p.y * 100).toFixed(0)}
             </span>
             <button
               type="button"
-              className="text-fg3 hover:text-fg text-xxs px-1"
+              className="text-fg3 hover:text-fg text-xxs shrink-0 pl-1"
               aria-label={`remove pick ${i}`}
               onClick={() => removeMaskPick(i)}
             >
