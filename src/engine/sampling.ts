@@ -6,9 +6,22 @@ export interface CellSample {
   r: number
   g: number
   b: number
+  /** most common colour in the cell, not the average — only filled on request */
+  dr: number
+  dg: number
+  db: number
 }
 
-const tmp: CellSample = { lum: 0, alpha: 0, r: 0, g: 0, b: 0 }
+const tmp: CellSample = { lum: 0, alpha: 0, r: 0, g: 0, b: 0, dr: 0, dg: 0, db: 0 }
+
+/* Histogram scratch reused across cells: 4 bits per channel = 4096 buckets.
+   Only the buckets a cell actually touched get cleared, so this stays O(taps). */
+const HIST_BUCKETS = 4096
+const histCount = new Uint16Array(HIST_BUCKETS)
+const histR = new Float32Array(HIST_BUCKETS)
+const histG = new Float32Array(HIST_BUCKETS)
+const histB = new Float32Array(HIST_BUCKETS)
+const histTouched = new Int32Array(64)
 
 /**
  * Average of a small stratified grid of taps inside the cell footprint.
@@ -21,6 +34,7 @@ export function sampleCell(
   y: number,
   cw: number,
   ch: number,
+  wantDominant = false,
 ): CellSample {
   const s = maps.scale
   const w = maps.width
@@ -39,6 +53,7 @@ export function sampleCell(
   let g = 0
   let b = 0
   let n = 0
+  let touched = 0
 
   for (let j = 0; j < k; j++) {
     const fy = k === 1 ? ay : ay + ((j + 0.5) / k - 0.5) * fh
@@ -47,12 +62,25 @@ export function sampleCell(
       const fx = k === 1 ? ax : ax + ((i + 0.5) / k - 0.5) * fw
       const px = Math.min(w - 1, Math.max(0, Math.round(fx)))
       const idx = py * w + px
+      const a = maps.alpha[idx]
+      const pr = maps.rgb[idx * 3]
+      const pg = maps.rgb[idx * 3 + 1]
+      const pb = maps.rgb[idx * 3 + 2]
       lum += maps.lum[idx]
-      alpha += maps.alpha[idx]
-      r += maps.rgb[idx * 3]
-      g += maps.rgb[idx * 3 + 1]
-      b += maps.rgb[idx * 3 + 2]
+      alpha += a
+      r += pr
+      g += pg
+      b += pb
       n++
+
+      if (wantDominant && a > 0.5 && touched < histTouched.length) {
+        const bucket = ((pr >> 4) << 8) | ((pg >> 4) << 4) | (pb >> 4)
+        if (histCount[bucket] === 0) histTouched[touched++] = bucket
+        histCount[bucket]++
+        histR[bucket] += pr
+        histG[bucket] += pg
+        histB[bucket] += pb
+      }
     }
   }
 
@@ -62,6 +90,31 @@ export function sampleCell(
   tmp.r = r * inv
   tmp.g = g * inv
   tmp.b = b * inv
+
+  if (wantDominant) {
+    if (touched === 0) {
+      tmp.dr = tmp.r
+      tmp.dg = tmp.g
+      tmp.db = tmp.b
+    } else {
+      // first bucket wins ties, and tap order is fixed, so this stays deterministic
+      let best = histTouched[0]
+      for (let i = 1; i < touched; i++) {
+        if (histCount[histTouched[i]] > histCount[best]) best = histTouched[i]
+      }
+      const c = histCount[best]
+      tmp.dr = histR[best] / c
+      tmp.dg = histG[best] / c
+      tmp.db = histB[best] / c
+      for (let i = 0; i < touched; i++) {
+        const t = histTouched[i]
+        histCount[t] = 0
+        histR[t] = 0
+        histG[t] = 0
+        histB[t] = 0
+      }
+    }
+  }
   return tmp
 }
 

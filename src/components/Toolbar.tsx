@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
+import { scrambleSubtree } from '../ui/scramble'
 import { buildDemoImage } from '../engine/demo'
 import { buildFilename, downloadBlob, renderExport } from '../engine/export'
 import type { PreviewQuality } from '../types/editor'
@@ -15,6 +16,14 @@ interface Item {
 function Menu(props: { label: string; items: Item[] }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const el = listRef.current
+    if (!el) return
+    return scrambleSubtree(el, 220)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -48,6 +57,7 @@ function Menu(props: { label: string; items: Item[] }) {
       </button>
       {open && (
         <div
+          ref={listRef}
           role="menu"
           className="absolute left-0 top-full mt-[2px] z-50 bg-black border border-line2 py-1 panel-reveal"
           style={{ minWidth: width + 'ch' }}

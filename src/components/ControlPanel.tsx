@@ -275,6 +275,7 @@ export function ControlPanel() {
           options={[
             { value: 'solid', label: 'SOLID' },
             { value: 'source', label: 'ORIGINAL AVG' },
+            { value: 'source-dominant', label: 'ORIGINAL MAIN' },
             { value: 'source-image', label: 'ORIGINAL PIXELS' },
             { value: 'luminance-gradient', label: 'GRAD/LUMINANCE' },
             { value: 'x-gradient', label: 'GRAD/POSITION X' },
@@ -285,7 +286,14 @@ export function ControlPanel() {
         {colorMode === 'solid' && <ParamColor path="color.solid" label="COLOR" />}
         {colorMode === 'source' && (
           <div className="pl-3 text-xxs text-fg3 leading-snug">
-            AVERAGE RGB OF EACH CELL, ONE FLAT COLOR PER SYMBOL.
+            AVERAGE RGB OF THE CELL. ONE FLAT COLOR PER SYMBOL, SOFT BLENDS.
+          </div>
+        )}
+        {colorMode === 'source-dominant' && (
+          <div className="pl-3 text-xxs text-fg3 leading-snug">
+            MOST COMMON COLOR OF THE CELL, NOT THE AVERAGE.
+            <br />
+            ONE FLAT COLOR PER SYMBOL, KEEPS HUES CLEAN.
           </div>
         )}
         {colorMode === 'source-image' && (

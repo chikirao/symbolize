@@ -8,6 +8,7 @@ export type GradientDir = 'along' | 'perpendicular'
 export type ColorMode =
   | 'solid'
   | 'source'
+  | 'source-dominant'
   | 'source-image'
   | 'luminance-gradient'
   | 'x-gradient'

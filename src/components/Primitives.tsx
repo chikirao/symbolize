@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { scrambleText } from '../ui/scramble'
+import { scrambleSubtree, scrambleText } from '../ui/scramble'
 
 /* ------------------------------------------------------------------ */
 /* ASCII frame                                                         */
@@ -337,6 +337,7 @@ export function Section(props: {
   children: React.ReactNode
 }) {
   const titleRef = useRef<HTMLSpanElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
   const mounted = useRef(false)
   useEffect(() => {
     if (!mounted.current) {
@@ -347,6 +348,14 @@ export function Section(props: {
     if (!el) return
     return scrambleText(el, props.title, 190, props.title.length * 977)
   }, [props.open, props.title])
+
+  // the whole panel resolves out of noise, not just its heading
+  useEffect(() => {
+    if (!props.open) return
+    const el = bodyRef.current
+    if (!el) return
+    return scrambleSubtree(el, 320)
+  }, [props.open])
 
   return (
     <div className="border-b border-line">
@@ -362,7 +371,11 @@ export function Section(props: {
         </span>
         <span className="ml-auto text-fg3 text-xxs">{props.badge}</span>
       </button>
-      {props.open && <div className="pb-2 px-2 panel-reveal">{props.children}</div>}
+      {props.open && (
+        <div ref={bodyRef} className="pb-2 px-2 panel-reveal">
+          {props.children}
+        </div>
+      )}
     </div>
   )
 }

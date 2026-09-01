@@ -192,6 +192,7 @@ export function calculateElements(
   const mk = settings.mask
   const ed = settings.edges
   const colorJitter = settings.color.jitter
+  const wantDominant = settings.color.mode === 'source-dominant'
   const poolLen = pool.length
   const noiseScale = Math.max(0.0005, settings.symbols.noiseScale)
 
@@ -211,12 +212,12 @@ export function calculateElements(
     const rColG = rnd()
     const rColB = rnd()
 
-    const sample = sampleCell(maps, cell.x, cell.y, cell.cw, cell.ch)
+    const sample = sampleCell(maps, cell.x, cell.y, cell.cw, cell.ch, wantDominant)
     const rawLum = sample.lum
     const rawAlpha = sample.alpha
-    const sr = sample.r
-    const sg = sample.g
-    const sb = sample.b
+    const sr = wantDominant ? sample.dr : sample.r
+    const sg = wantDominant ? sample.dg : sample.g
+    const sb = wantDominant ? sample.db : sample.b
 
     // ---- mask -------------------------------------------------------
     let maskF = 1
@@ -353,7 +354,8 @@ export function calculateElements(
         cg = 255
         cb = 255
         break
-      case 'source': {
+      case 'source':
+      case 'source-dominant': {
         applyAdjust(sr, sg, sb, adj, tmpColor)
         cr = tmpColor[0]
         cg = tmpColor[1]
