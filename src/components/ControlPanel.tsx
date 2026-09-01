@@ -9,11 +9,14 @@ import { SelectionPicker } from './SelectionPicker'
 
 const DEFAULT_OPEN = ['grid', 'size', 'color']
 
-export function ControlPanel() {
-  const [open, setOpen] = useState<string[]>(DEFAULT_OPEN)
+export function ControlPanel(props: { includeExport?: boolean; singleOpen?: boolean } = {}) {
+  const includeExport = props.includeExport ?? true
+  const [open, setOpen] = useState<string[]>(props.singleOpen ? ['grid'] : DEFAULT_OPEN)
   const toggle = useCallback((id: string) => {
-    setOpen((cur) => (cur.includes(id) ? cur.filter((c) => c !== id) : [...cur, id]))
-  }, [])
+    setOpen((cur) =>
+      cur.includes(id) ? cur.filter((c) => c !== id) : props.singleOpen ? [id] : [...cur, id],
+    )
+  }, [props.singleOpen])
   const isOpen = (id: string) => open.includes(id)
 
   const settings = useEditor((s) => s.settings)
@@ -534,9 +537,11 @@ export function ControlPanel() {
       </Section>
 
       {/* ---------------- EXPORT ---------------- */}
-      <Section id="export" title="EXPORT" open={isOpen('export')} onToggle={toggle}>
-        <ExportPanel />
-      </Section>
+      {includeExport && (
+        <Section id="export" title="EXPORT" open={isOpen('export')} onToggle={toggle}>
+          <ExportPanel />
+        </Section>
+      )}
 
       <div className="h-10" />
     </div>

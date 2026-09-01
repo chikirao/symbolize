@@ -39,7 +39,8 @@ export function SliderControl(props: SliderProps) {
   return (
     <div
       className={
-        'group relative pl-3 py-[1px] ' + (props.disabled ? 'opacity-40 pointer-events-none' : '')
+        'slider-control group relative pl-3 py-[1px] ' +
+        (props.disabled ? 'opacity-40 pointer-events-none' : '')
       }
     >
       <span

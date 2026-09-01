@@ -77,7 +77,7 @@ function Tile(props: {
       title={props.label + (props.enabled ? '  [ON]' : '  [OFF]')}
       onClick={props.onToggle}
       className={
-        'relative flex items-center justify-center h-[32px] border transition-colors ' +
+        'symbol-tile relative flex items-center justify-center h-[32px] border transition-colors ' +
         (props.enabled
           ? 'border-fg bg-[#151515]'
           : 'border-line hover:border-line2 hover:bg-[#0d0d0d]')
@@ -96,7 +96,7 @@ function Tile(props: {
 function TileGrid(props: { children: React.ReactNode }) {
   return (
     <div
-      className="grid gap-[3px] px-1 pb-1"
+      className="symbol-grid grid gap-[3px] px-1 pb-1"
       style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(32px, 1fr))' }}
     >
       {props.children}
@@ -380,7 +380,7 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
           const text = textById.get(id)
           const label = text ? text.char : custom ? custom.label : SYMBOL_MAP[id]?.label || id
           return (
-            <div key={id} className="flex items-center gap-1 group hover:bg-[#101010]">
+            <div key={id} className="symbol-active-row flex items-center gap-1 group hover:bg-[#101010]">
               <SymbolPreview id={id} custom={custom} text={text} on size={16} />
               <span className="text-xs2 text-fg truncate flex-1 min-w-0">{label}</span>
               {custom && (

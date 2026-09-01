@@ -142,10 +142,10 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
   }
 
   return (
-    <div className="flex items-center gap-4 px-3 h-[26px] border-b border-line shrink-0">
-      <span className="text-fg text-xs2 tracking-[0.25em] select-none">symbolize</span>
+    <div className="app-toolbar flex items-center gap-4 px-3 h-[26px] border-b border-line shrink-0">
+      <span className="app-brand text-fg text-xs2 tracking-[0.25em] select-none">symbolize</span>
 
-      <div className="flex items-center gap-1">
+      <div className="desktop-toolbar-nav flex items-center gap-1">
         <Menu
           label="FILE"
           items={[
@@ -200,7 +200,27 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
         />
       </div>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="mobile-toolbar-actions ml-auto">
+        <button type="button" className="btn" onClick={props.onPickFile}>
+          LOAD
+        </button>
+        <button type="button" className="btn" onClick={randomizeSeed}>
+          RND
+        </button>
+        <button type="button" className="btn" onClick={requestFit}>
+          FIT
+        </button>
+        <button
+          type="button"
+          className={'btn ' + (view.showOriginal ? 'btn-on' : '')}
+          aria-pressed={view.showOriginal}
+          onClick={() => setView({ showOriginal: !view.showOriginal, beforeAfter: false })}
+        >
+          ORIG
+        </button>
+      </div>
+
+      <div className="desktop-toolbar-actions ml-auto flex items-center gap-3">
         <button type="button" className="btn text-xxs" onClick={randomizeSeed}>
           RANDOMIZE
         </button>

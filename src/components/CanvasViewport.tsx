@@ -129,7 +129,11 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
   const fit = useCallback(() => {
     const el = containerRef.current
     if (!el || !image) return
-    const pad = 40
+    if (el.clientWidth < 80 || el.clientHeight < 80) return
+    const mobile = window.matchMedia(
+      '(max-width: 899px), (pointer: coarse) and (max-width: 1199px)',
+    ).matches
+    const pad = mobile ? 20 : 40
     const zx = (el.clientWidth - pad) / image.width
     const zy = (el.clientHeight - pad) / image.height
     const z = Math.max(0.02, Math.min(zx, zy))
@@ -144,12 +148,20 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
-    const ro = new ResizeObserver(() => {
-      /* keep the artwork visible when the window resizes */
+    let width = el.clientWidth
+    let height = el.clientHeight
+    const ro = new ResizeObserver(([entry]) => {
+      const nextWidth = entry.contentRect.width
+      const nextHeight = entry.contentRect.height
+      const changedOrientation = (width > height) !== (nextWidth > nextHeight)
+      const changedWidth = Math.abs(nextWidth - width) > 48
+      width = nextWidth
+      height = nextHeight
+      if (changedOrientation || changedWidth) requestAnimationFrame(fit)
     })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [])
+  }, [fit])
 
   /* ---------------- glitch overlay ---------------- */
 
@@ -166,7 +178,20 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
 
   /* ---------------- pan / zoom ---------------- */
 
-  const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
+  type Point = { x: number; y: number }
+  type Gesture =
+    | { kind: 'pan'; pointerId: number; start: Point; panX: number; panY: number }
+    | {
+        kind: 'pinch'
+        pointerIds: [number, number]
+        distance: number
+        imageX: number
+        imageY: number
+        zoom: number
+      }
+
+  const pointers = useRef(new Map<number, Point>())
+  const gesture = useRef<Gesture | null>(null)
 
   /** Screen point -> normalised image coordinates, or null when outside. */
   const toImageUV = (clientX: number, clientY: number): [number, number] | null => {
@@ -183,6 +208,24 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
     return [u, v]
   }
 
+  const beginPinch = () => {
+    const el = containerRef.current
+    if (!el || !image || pointers.current.size < 2) return
+    const [[idA, a], [idB, b]] = Array.from(pointers.current.entries())
+    const rect = el.getBoundingClientRect()
+    const midpoint = { x: (a.x + b.x) / 2 - rect.left, y: (a.y + b.y) / 2 - rect.top }
+    const distance = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y))
+    const current = useEditor.getState().view
+    gesture.current = {
+      kind: 'pinch',
+      pointerIds: [idA, idB],
+      distance,
+      imageX: (midpoint.x - rect.width / 2 - current.panX) / current.zoom + image.width / 2,
+      imageY: (midpoint.y - rect.height / 2 - current.panY) / current.zoom + image.height / 2,
+      zoom: current.zoom,
+    }
+  }
+
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 && e.button !== 1) return
     if (view.tool === 'pick' && e.button === 0) {
@@ -194,17 +237,69 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
     }
     const el = e.currentTarget as HTMLElement
     el.setPointerCapture(e.pointerId)
-    drag.current = { x: e.clientX, y: e.clientY, px: view.panX, py: view.panY }
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (pointers.current.size >= 2) {
+      beginPinch()
+      return
+    }
+    const current = useEditor.getState().view
+    gesture.current = {
+      kind: 'pan',
+      pointerId: e.pointerId,
+      start: { x: e.clientX, y: e.clientY },
+      panX: current.panX,
+      panY: current.panY,
+    }
   }
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!drag.current) return
+    if (!pointers.current.has(e.pointerId)) return
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+    if (pointers.current.size >= 2) {
+      if (gesture.current?.kind !== 'pinch') beginPinch()
+      const pinch = gesture.current
+      const el = containerRef.current
+      if (!el || !image || pinch?.kind !== 'pinch') return
+      const a = pointers.current.get(pinch.pointerIds[0])
+      const b = pointers.current.get(pinch.pointerIds[1])
+      if (!a || !b) {
+        beginPinch()
+        return
+      }
+      const rect = el.getBoundingClientRect()
+      const midpoint = { x: (a.x + b.x) / 2 - rect.left, y: (a.y + b.y) / 2 - rect.top }
+      const distance = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y))
+      const zoom = Math.max(0.02, Math.min(24, pinch.zoom * (distance / pinch.distance)))
+      setView({
+        zoom,
+        panX: midpoint.x - rect.width / 2 - (pinch.imageX - image.width / 2) * zoom,
+        panY: midpoint.y - rect.height / 2 - (pinch.imageY - image.height / 2) * zoom,
+      })
+      return
+    }
+
+    const pan = gesture.current
+    if (pan?.kind !== 'pan' || pan.pointerId !== e.pointerId) return
     setView({
-      panX: drag.current.px + (e.clientX - drag.current.x),
-      panY: drag.current.py + (e.clientY - drag.current.y),
+      panX: pan.panX + (e.clientX - pan.start.x),
+      panY: pan.panY + (e.clientY - pan.start.y),
     })
   }
   const onPointerUp = (e: React.PointerEvent) => {
-    drag.current = null
+    pointers.current.delete(e.pointerId)
+    if (pointers.current.size === 1) {
+      const [[pointerId, point]] = Array.from(pointers.current.entries())
+      const current = useEditor.getState().view
+      gesture.current = {
+        kind: 'pan',
+        pointerId,
+        start: point,
+        panX: current.panX,
+        panY: current.panY,
+      }
+    } else {
+      gesture.current = null
+    }
     try {
       ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
     } catch {
@@ -269,6 +364,11 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
   const frameH = image ? image.height * view.zoom : 0
   const zoomPct = Math.round(view.zoom * 100)
 
+  const zoomBy = (factor: number) => {
+    const current = useEditor.getState().view
+    setView({ zoom: Math.max(0.02, Math.min(24, current.zoom * factor)) })
+  }
+
   return (
     <AsciiBox
       className="flex-1 min-w-0 flex flex-col"
@@ -298,7 +398,35 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onDoubleClick={() => view.tool === 'pan' && fit()}
       >
+        <div
+          className="mobile-canvas-controls"
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerMove={(e) => e.stopPropagation()}
+        >
+          <button type="button" aria-label="zoom out" onClick={() => zoomBy(0.8)}>
+            [-]
+          </button>
+          <button type="button" aria-label="fit image to screen" onClick={fit}>
+            [FIT]
+          </button>
+          <button type="button" aria-label="zoom in" onClick={() => zoomBy(1.25)}>
+            [+]
+          </button>
+          <button
+            type="button"
+            aria-label="toggle before and after"
+            aria-pressed={view.beforeAfter}
+            className={view.beforeAfter ? 'is-active' : ''}
+            onClick={() => setView({ beforeAfter: !view.beforeAfter, showOriginal: false })}
+          >
+            [A/B]
+          </button>
+        </div>
+        <div className="mobile-gesture-hint" aria-hidden="true">
+          1F PAN // 2F ZOOM // DOUBLE TAP FIT
+        </div>
         {image ? (
           <div
             className="absolute"

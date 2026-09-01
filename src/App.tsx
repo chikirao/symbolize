@@ -7,6 +7,7 @@ import { SourcePanel } from './components/SourcePanel'
 import { PresetPanel } from './components/PresetPanel'
 import { SymbolLibrary } from './components/SymbolLibrary'
 import { StatusBar } from './components/StatusBar'
+import { MobileWorkspace } from './components/MobileWorkspace'
 import { AsciiBox } from './components/Primitives'
 import { armIntro, runIntro } from './ui/intro'
 import { loadDemoImage } from './engine/demo'
@@ -20,12 +21,24 @@ import {
 export default function App() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [dropping, setDropping] = useState(false)
+  const [mobileLayout, setMobileLayout] = useState(() =>
+    window.matchMedia('(max-width: 899px), (pointer: coarse) and (max-width: 1199px)').matches,
+  )
   const settings = useEditor((s) => s.settings)
   const loadImageSource = useEditor((s) => s.loadImageSource)
   const setStatus = useEditor((s) => s.setStatus)
   const requestFit = useEditor((s) => s.requestFit)
   const randomizeSeed = useEditor((s) => s.randomizeSeed)
   const setView = useEditor((s) => s.setView)
+
+  useEffect(() => {
+    const query = window.matchMedia(
+      '(max-width: 899px), (pointer: coarse) and (max-width: 1199px)',
+    )
+    const update = () => setMobileLayout(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
 
   /* ---------------- first run ---------------- */
   useEffect(() => {
@@ -197,37 +210,43 @@ export default function App() {
   }, [requestFit, setView, randomizeSeed])
 
   return (
-    <div className="h-full w-full flex flex-col bg-black text-fg min-w-[900px]">
+    <div className="app-shell h-full w-full flex flex-col bg-black text-fg min-w-[900px]">
       <Toolbar onPickFile={pickFile} onPaste={pasteFromClipboard} />
 
-      <div className="flex-1 min-h-0 flex gap-4 p-4 pt-3">
-        {/* left column */}
-        <div className="hidden lg:flex w-[268px] shrink-0 flex-col gap-4 min-h-0">
-          <SourcePanel onPickFile={pickFile} onPaste={pasteFromClipboard} />
-          <AsciiBox
-            title="ELEMENTS"
-            className="flex-1 min-h-0 flex flex-col"
-            bodyClassName="flex-1 min-h-0 overflow-y-auto pt-1 pb-2"
-          >
-            <SymbolLibrary settings={settings} />
-          </AsciiBox>
-          <PresetPanel />
-        </div>
+      {mobileLayout ? (
+        <MobileWorkspace onPickFile={pickFile} onPaste={pasteFromClipboard} />
+      ) : (
+        <>
+          <div className="desktop-workspace flex-1 min-h-0 flex gap-4 p-4 pt-3">
+            {/* left column */}
+            <div className="hidden lg:flex w-[268px] shrink-0 flex-col gap-4 min-h-0">
+              <SourcePanel onPickFile={pickFile} onPaste={pasteFromClipboard} />
+              <AsciiBox
+                title="ELEMENTS"
+                className="flex-1 min-h-0 flex flex-col"
+                bodyClassName="flex-1 min-h-0 overflow-y-auto pt-1 pb-2"
+              >
+                <SymbolLibrary settings={settings} />
+              </AsciiBox>
+              <PresetPanel />
+            </div>
 
-        {/* canvas */}
-        <CanvasViewport onPickFile={pickFile} />
+            {/* canvas */}
+            <CanvasViewport onPickFile={pickFile} />
 
-        {/* right column */}
-        <AsciiBox
-          title="PARAMETERS"
-          className="w-[300px] shrink-0 flex flex-col min-h-0"
-          bodyClassName="flex-1 min-h-0 pt-1"
-        >
-          <ControlPanel />
-        </AsciiBox>
-      </div>
+            {/* right column */}
+            <AsciiBox
+              title="PARAMETERS"
+              className="w-[300px] shrink-0 flex flex-col min-h-0"
+              bodyClassName="flex-1 min-h-0 pt-1"
+            >
+              <ControlPanel />
+            </AsciiBox>
+          </div>
 
-      <StatusBar />
+          <StatusBar className="desktop-status" />
+        </>
+      )}
 
       <input
         ref={fileRef}

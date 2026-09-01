@@ -3,7 +3,7 @@ import { useEditor } from '../store/editorStore'
 import { AsciiMeter } from './SliderControl'
 import { scrambleText } from '../ui/scramble'
 
-export function StatusBar() {
+export function StatusBar(props: { compact?: boolean; className?: string } = {}) {
   const status = useEditor((s) => s.status)
   const stats = useEditor((s) => s.stats)
   const image = useEditor((s) => s.image)
@@ -23,8 +23,26 @@ export function StatusBar() {
 
   const busy = status.kind === 'busy'
 
+  if (props.compact) {
+    return (
+      <div className={'mobile-status-bar ' + (props.className || '')}>
+        <span className="mobile-status-message">
+          {status.kind === 'error' ? 'ERROR :: ' : ''}
+          <span ref={msgRef}>{status.message}</span>
+        </span>
+        {busy && status.progress >= 0 ? (
+          <span className="text-fg">{Math.round(status.progress * 100)}%</span>
+        ) : (
+          <span className="mobile-status-stats">
+            {stats ? `${stats.elements} SYM` : '0 SYM'} :: {Math.round(view.zoom * 100)}%
+          </span>
+        )}
+      </div>
+    )
+  }
+
   return (
-    <div className="h-[22px] shrink-0 border-t border-line px-3 flex items-center gap-2 text-xs2 select-none">
+    <div className={'h-[22px] shrink-0 border-t border-line px-3 flex items-center gap-2 text-xs2 select-none ' + (props.className || '')}>
       <span
         className={
           status.kind === 'error' ? 'text-fg' : status.kind === 'busy' ? 'text-fg' : 'text-fg2'

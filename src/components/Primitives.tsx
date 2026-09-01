@@ -29,7 +29,7 @@ export function AsciiBox(props: {
         ┘
       </span>
       {(props.title !== undefined || props.right !== undefined) && (
-        <div className="flex items-center justify-between px-2 -mt-[9px] pointer-events-none select-none">
+        <div className="ascii-box-header flex items-center justify-between px-2 -mt-[9px] pointer-events-none select-none">
           <span className="bg-black px-1 text-fg text-xs2 tracking-widest pointer-events-auto">
             {props.title}
           </span>
@@ -38,7 +38,7 @@ export function AsciiBox(props: {
       )}
       <div className={props.bodyClassName}>{props.children}</div>
       {(props.footerLeft !== undefined || props.footerRight !== undefined) && (
-        <div className="flex items-center justify-between px-2 -mb-[9px] pointer-events-none select-none">
+        <div className="ascii-box-footer flex items-center justify-between px-2 -mb-[9px] pointer-events-none select-none">
           <span className="bg-black px-1 text-fg2 text-xs2">{props.footerLeft}</span>
           <span className="bg-black px-1 text-fg2 text-xs2">{props.footerRight}</span>
         </div>
@@ -86,7 +86,10 @@ export function Hint(props: { text: string; children: React.ReactNode }) {
   const timer = useRef<number | undefined>(undefined)
   return (
     <span
-      className="relative"
+      className="hint-trigger relative"
+      role="button"
+      tabIndex={0}
+      aria-expanded={open}
       onMouseEnter={() => {
         timer.current = window.setTimeout(() => setOpen(true), 420)
       }}
@@ -94,13 +97,21 @@ export function Hint(props: { text: string; children: React.ReactNode }) {
         if (timer.current) clearTimeout(timer.current)
         setOpen(false)
       }}
+      onClick={() => setOpen((value) => !value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          setOpen((value) => !value)
+        }
+        if (e.key === 'Escape') setOpen(false)
+      }}
     >
       {props.children}
       {open && (
         <span className="tip ascii-art left-0 top-full mt-1 text-xs2">
-          <span className="block text-fg3">┌{'─'.repeat(props.text.length + 2)}┐</span>
-          <span className="block">│ {props.text} │</span>
-          <span className="block text-fg3">└{'─'.repeat(props.text.length + 2)}┘</span>
+          <span className="tip-frame block text-fg3">┌{'─'.repeat(props.text.length + 2)}┐</span>
+          <span className="tip-copy block">│ {props.text} │</span>
+          <span className="tip-frame block text-fg3">└{'─'.repeat(props.text.length + 2)}┘</span>
         </span>
       )}
     </span>
@@ -165,7 +176,7 @@ export function RadioRow<T extends string>(props: {
 }) {
   return (
     <div
-      className="pl-3 grid gap-x-2"
+      className="radio-row pl-3 grid gap-x-2"
       style={{ gridTemplateColumns: `repeat(${props.columns || 2}, minmax(0,1fr))` }}
       role="radiogroup"
     >
@@ -360,10 +371,10 @@ export function Section(props: {
   }, [props.open])
 
   return (
-    <div className="border-b border-line">
+    <div className="control-section border-b border-line">
       <button
         type="button"
-        className="w-full flex items-center gap-1 px-2 py-[3px] text-left hover:bg-[#111] group"
+        className="section-toggle w-full flex items-center gap-1 px-2 py-[3px] text-left hover:bg-[#111] group"
         aria-expanded={props.open}
         onClick={() => props.onToggle(props.id)}
       >
@@ -374,7 +385,7 @@ export function Section(props: {
         <span className="ml-auto text-fg3 text-xxs">{props.badge}</span>
       </button>
       {props.open && (
-        <div ref={bodyRef} className="pb-2 px-2 panel-reveal">
+        <div ref={bodyRef} className="section-body pb-2 px-2 panel-reveal">
           {props.children}
         </div>
       )}

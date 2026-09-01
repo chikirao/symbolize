@@ -46,7 +46,7 @@ export function PresetPanel() {
             <button
               type="button"
               className={
-                'flex-1 text-left text-xs2 truncate px-1 hover:bg-[#111] ' +
+                'preset-item flex-1 text-left text-xs2 truncate px-1 hover:bg-[#111] ' +
                 (p.id === activePresetId ? 'text-fg' : 'text-fg2 hover:text-fg')
               }
               onClick={() => applyPreset(p.id)}
