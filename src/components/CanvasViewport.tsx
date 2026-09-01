@@ -257,6 +257,14 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
     setView({ split: Math.max(0, Math.min(1, t)) })
   }
 
+  /**
+   * With a colour mask armed and nothing picked yet the pattern is empty, so the
+   * viewport is just the background — nothing to aim the eyedropper at. While the
+   * picker is active the source sits underneath at full strength and the pattern
+   * is faded over it, so you can see both what you are sampling and what it does.
+   */
+  const picking = view.tool === 'pick' && !view.showOriginal && !view.beforeAfter
+
   const frameW = image ? image.width * view.zoom : 0
   const frameH = image ? image.height * view.zoom : 0
   const zoomPct = Math.round(view.zoom * 100)
@@ -308,14 +316,17 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
               className="absolute inset-0 w-full h-full"
               style={{
                 imageRendering: view.zoom > 3 ? 'pixelated' : 'auto',
-                opacity: view.showOriginal ? 0 : 1,
+                opacity: view.showOriginal ? 0 : picking ? 0.38 : 1,
+                zIndex: 1,
               }}
             />
             <canvas
               ref={origRef}
               className="absolute inset-0 w-full h-full pointer-events-none"
               style={{
-                display: view.showOriginal || view.beforeAfter ? 'block' : 'none',
+                display: view.showOriginal || view.beforeAfter || picking ? 'block' : 'none',
+                // under the pattern while sampling, over it in before/after
+                zIndex: picking ? 0 : 2,
                 clipPath: view.beforeAfter && !view.showOriginal
                   ? `inset(0 ${(1 - view.split) * 100}% 0 0)`
                   : undefined,
@@ -324,7 +335,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
             {view.beforeAfter && !view.showOriginal && (
               <div
                 className="absolute top-0 bottom-0 w-[9px] -ml-[4px] cursor-ew-resize flex flex-col items-center"
-                style={{ left: `${view.split * 100}%` }}
+                style={{ left: `${view.split * 100}%`, zIndex: 3 }}
                 onPointerDown={onSplitDown}
                 onPointerMove={onSplitMove}
                 onPointerUp={() => (splitDrag.current = false)}
@@ -337,7 +348,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
             <canvas
               ref={glitchRef}
               className="absolute inset-0 w-full h-full pointer-events-none"
-              style={{ width: '100%', height: '100%' }}
+              style={{ width: '100%', height: '100%', zIndex: 4 }}
             />
           </div>
         ) : (
