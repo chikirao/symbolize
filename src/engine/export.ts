@@ -1,4 +1,10 @@
-import type { CustomSymbolDef, EditorSettings, RenderStats, SourceMaps } from '../types/editor'
+import type {
+  CustomSymbolDef,
+  EditorSettings,
+  RenderStats,
+  SourceMaps,
+  TextSymbolDef,
+} from '../types/editor'
 import { renderCompositeAsync } from './renderer'
 
 export type ExportFormat = 'png' | 'jpeg' | 'webp'
@@ -11,6 +17,7 @@ export interface ExportRequest {
   maps: SourceMaps
   original: HTMLCanvasElement | null
   customSymbols: CustomSymbolDef[]
+  textSymbols?: TextSymbolDef[]
   width: number
   height: number
   format: ExportFormat
@@ -67,6 +74,7 @@ export async function renderExport(
       settings: req.settings,
       original: req.original,
       customSymbols: req.customSymbols,
+      textSymbols: req.textSymbols,
     },
     onProgress,
   )

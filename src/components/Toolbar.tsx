@@ -111,6 +111,7 @@ export function Toolbar(props: { onPickFile: () => void }) {
           maps: st.maps,
           original: st.image.canvas,
           customSymbols: st.customSymbols,
+          textSymbols: st.textSymbols,
           width: st.image.width * mult,
           height: st.image.height * mult,
           format: 'png',

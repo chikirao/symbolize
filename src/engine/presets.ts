@@ -167,6 +167,49 @@ export const BUILTIN_PRESETS: Preset[] = [
     s.layers.background.mode = 'white'
     s.threshold.soft = 0.03
   }),
+  makePreset('arrow-flow', 'ARROW FLOW', (s) => {
+    s.grid.cellSize = 17
+    s.grid.mode = 'staggered'
+    s.symbols.enabled = enabledMap(['arrowRight', 'caret', 'chevron', 'arrowBlock'])
+    s.symbols.weights = weightMap({ arrowRight: 4, caret: 2, chevron: 3, arrowBlock: 1 })
+    s.symbols.strokeWeight = 0.15
+    s.size.min = 0.25
+    s.size.max = 1.2
+    s.rotation.mode = 'gradient'
+    s.rotation.gradientDir = 'perpendicular'
+    s.rotation.jitter = 10
+    s.color.mode = 'luminance-gradient'
+    s.color.reverse = true
+    s.opacity.mode = 'luminance'
+    s.opacity.min = 1
+    s.opacity.max = 0.3
+    s.layers.background.mode = 'black'
+  }),
+  makePreset('tech-grid', 'TECH GRID', (s) => {
+    s.grid.cellSize = 22
+    s.symbols.enabled = enabledMap([
+      'cornerMarks',
+      'target',
+      'dotGrid',
+      'hatch',
+      'crosshair',
+      'squareDot',
+    ])
+    s.symbols.selectMode = 'luminance'
+    s.symbols.strokeWeight = 0.09
+    s.size.min = 0.35
+    s.size.max = 1
+    s.size.clamp = true
+    s.color.mode = 'solid'
+    s.color.solid = '#E8FFF6'
+    s.opacity.mode = 'luminance'
+    s.opacity.min = 1
+    s.opacity.max = 0.22
+    s.edges.enabled = true
+    s.edges.mode = 'both'
+    s.edges.boost = 1.1
+    s.layers.background.mode = 'black'
+  }),
   makePreset('source-colors', 'SOURCE COLORS', (s) => {
     s.grid.cellSize = 13
     s.grid.mode = 'staggered'

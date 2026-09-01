@@ -136,6 +136,14 @@ export interface Preset {
   settings: EditorSettings
 }
 
+export interface TextSymbolDef {
+  id: string
+  label: string
+  char: string
+  font: string // css font-family stack
+  bold: boolean
+}
+
 export interface CustomSymbolDef {
   id: string
   label: string

@@ -38,6 +38,18 @@ function roundRectPath(
   ctx.closePath()
 }
 
+function polygonPath(ctx: CanvasRenderingContext2D, sides: number, r: number, rot: number) {
+  ctx.beginPath()
+  for (let i = 0; i < sides; i++) {
+    const a = rot + (i * Math.PI * 2) / sides
+    const x = Math.cos(a) * r
+    const y = Math.sin(a) * r
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.closePath()
+}
+
 function arrowHead(
   ctx: CanvasRenderingContext2D,
   tipX: number,
@@ -375,6 +387,344 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
       ctx.lineTo(h * 0.3 + w, -h)
       ctx.lineTo(h * 0.3 + w, h)
       ctx.lineTo(h * 0.3, h)
+      ctx.stroke()
+    },
+  },
+
+  /* ---- extra basics ---- */
+  {
+    id: 'hexagon',
+    label: 'HEXAGON',
+    category: 'basic',
+    paint: 'fill',
+    draw: (ctx, s) => {
+      polygonPath(ctx, 6, s / 2, -Math.PI / 2)
+      ctx.fill()
+    },
+  },
+  {
+    id: 'hexagonOutline',
+    label: 'HEXAGON OUTLINE',
+    category: 'basic',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      polygonPath(ctx, 6, Math.max(sw, s / 2 - sw / 2), -Math.PI / 2)
+      ctx.stroke()
+    },
+  },
+  {
+    id: 'pentagon',
+    label: 'PENTAGON',
+    category: 'basic',
+    paint: 'fill',
+    draw: (ctx, s) => {
+      polygonPath(ctx, 5, s / 2, -Math.PI / 2)
+      ctx.fill()
+    },
+  },
+  {
+    id: 'capsule',
+    label: 'CAPSULE',
+    category: 'basic',
+    paint: 'fill',
+    draw: (ctx, s) => {
+      const h = s * 0.36
+      roundRectPath(ctx, -s / 2, -h / 2, s, h, h / 2)
+      ctx.fill()
+    },
+  },
+  {
+    id: 'halfCircle',
+    label: 'HALF CIRCLE',
+    category: 'basic',
+    paint: 'fill',
+    draw: (ctx, s) => {
+      ctx.beginPath()
+      ctx.arc(0, s * 0.14, s / 2, Math.PI, Math.PI * 2)
+      ctx.closePath()
+      ctx.fill()
+    },
+  },
+  {
+    id: 'triangleOutline',
+    label: 'TRIANGLE OUTLINE',
+    category: 'basic',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = Math.max(sw, s / 2 - sw / 2)
+      ctx.beginPath()
+      ctx.moveTo(0, -h)
+      ctx.lineTo(h * 0.9, h * 0.75)
+      ctx.lineTo(-h * 0.9, h * 0.75)
+      ctx.closePath()
+      ctx.stroke()
+    },
+  },
+  {
+    id: 'diamondOutline',
+    label: 'DIAMOND OUTLINE',
+    category: 'basic',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = Math.max(sw, s / 2 - sw / 2)
+      ctx.beginPath()
+      ctx.moveTo(0, -h)
+      ctx.lineTo(h, 0)
+      ctx.lineTo(0, h)
+      ctx.lineTo(-h, 0)
+      ctx.closePath()
+      ctx.stroke()
+    },
+  },
+
+  /* ---- extra directional ---- */
+  {
+    id: 'caret',
+    label: 'CARET',
+    category: 'directional',
+    paint: 'fill',
+    draw: (ctx, s) => {
+      const h = s / 2
+      ctx.beginPath()
+      ctx.moveTo(h, 0)
+      ctx.lineTo(-h * 0.65, -h * 0.9)
+      ctx.lineTo(-h * 0.65, h * 0.9)
+      ctx.closePath()
+      ctx.fill()
+    },
+  },
+  {
+    id: 'arrowBlock',
+    label: 'ARROW BLOCK',
+    category: 'directional',
+    paint: 'fill',
+    draw: (ctx, s) => {
+      const h = s / 2
+      const t = s * 0.17
+      ctx.beginPath()
+      ctx.moveTo(h, 0)
+      ctx.lineTo(h * 0.15, -h * 0.72)
+      ctx.lineTo(h * 0.15, -t)
+      ctx.lineTo(-h, -t)
+      ctx.lineTo(-h, t)
+      ctx.lineTo(h * 0.15, t)
+      ctx.lineTo(h * 0.15, h * 0.72)
+      ctx.closePath()
+      ctx.fill()
+    },
+  },
+  {
+    id: 'arrowDouble',
+    label: 'ARROW DOUBLE',
+    category: 'directional',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = s / 2
+      ctx.beginPath()
+      ctx.moveTo(-h * 0.7, 0)
+      ctx.lineTo(h * 0.7, 0)
+      ctx.stroke()
+      arrowHead(ctx, h * 0.86, 0, 0, s * 0.3)
+      arrowHead(ctx, -h * 0.86, 0, Math.PI, s * 0.3)
+    },
+  },
+  {
+    id: 'tick',
+    label: 'TICK',
+    category: 'directional',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = s / 2
+      ctx.beginPath()
+      ctx.moveTo(-h * 0.9, 0)
+      ctx.lineTo(-h * 0.2, h * 0.7)
+      ctx.lineTo(h * 0.9, -h * 0.75)
+      ctx.stroke()
+    },
+  },
+  {
+    id: 'zigzag',
+    label: 'ZIGZAG',
+    category: 'directional',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = s / 2
+      ctx.beginPath()
+      ctx.moveTo(-h, h * 0.5)
+      ctx.lineTo(-h / 3, -h * 0.5)
+      ctx.lineTo(h / 3, h * 0.5)
+      ctx.lineTo(h, -h * 0.5)
+      ctx.stroke()
+    },
+  },
+
+  /* ---- extra graphic ---- */
+  {
+    id: 'asterisk',
+    label: 'ASTERISK',
+    category: 'graphic',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = s / 2
+      ctx.beginPath()
+      for (let i = 0; i < 3; i++) {
+        const a = (i * Math.PI) / 3
+        ctx.moveTo(-Math.cos(a) * h, -Math.sin(a) * h)
+        ctx.lineTo(Math.cos(a) * h, Math.sin(a) * h)
+      }
+      ctx.stroke()
+    },
+  },
+  {
+    id: 'burst',
+    label: 'BURST',
+    category: 'graphic',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = s / 2
+      ctx.beginPath()
+      for (let i = 0; i < 8; i++) {
+        const a = (i * Math.PI) / 4
+        ctx.moveTo(Math.cos(a) * h * 0.42, Math.sin(a) * h * 0.42)
+        ctx.lineTo(Math.cos(a) * h, Math.sin(a) * h)
+      }
+      ctx.stroke()
+    },
+  },
+  {
+    id: 'target',
+    label: 'TARGET',
+    category: 'graphic',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = s / 2
+      ctx.beginPath()
+      ctx.arc(0, 0, Math.max(sw, h - sw / 2), 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(0, 0, Math.max(sw * 0.5, h * 0.5), 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.lineWidth = Math.max(sw, h * 0.3)
+      ctx.beginPath()
+      ctx.moveTo(0, 0)
+      ctx.lineTo(0.01, 0)
+      ctx.stroke()
+    },
+  },
+  {
+    id: 'hatch',
+    label: 'HATCH',
+    category: 'graphic',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = s / 2
+      ctx.beginPath()
+      for (let i = -1; i <= 1; i++) {
+        const o = i * s * 0.32
+        ctx.moveTo(-h + o * 0.5, h)
+        ctx.lineTo(h + o * 0.5, -h)
+      }
+      ctx.stroke()
+    },
+  },
+  {
+    id: 'dotGrid',
+    label: 'DOT GRID',
+    category: 'graphic',
+    paint: 'fill',
+    draw: (ctx, s) => {
+      const o = s * 0.33
+      const r = s * 0.09
+      for (let j = -1; j <= 1; j++) {
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath()
+          ctx.arc(i * o, j * o, r, 0, Math.PI * 2)
+          ctx.fill()
+        }
+      }
+    },
+  },
+  {
+    id: 'cornerMarks',
+    label: 'CORNER MARKS',
+    category: 'graphic',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = s / 2
+      const a = s * 0.3
+      ctx.beginPath()
+      ctx.moveTo(-h, -h + a)
+      ctx.lineTo(-h, -h)
+      ctx.lineTo(-h + a, -h)
+      ctx.moveTo(h - a, -h)
+      ctx.lineTo(h, -h)
+      ctx.lineTo(h, -h + a)
+      ctx.moveTo(h, h - a)
+      ctx.lineTo(h, h)
+      ctx.lineTo(h - a, h)
+      ctx.moveTo(-h + a, h)
+      ctx.lineTo(-h, h)
+      ctx.lineTo(-h, h - a)
+      ctx.stroke()
+    },
+  },
+  {
+    id: 'wave',
+    label: 'WAVE',
+    category: 'graphic',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = s / 2
+      ctx.beginPath()
+      ctx.moveTo(-h, 0)
+      ctx.quadraticCurveTo(-h * 0.5, -h * 0.9, 0, 0)
+      ctx.quadraticCurveTo(h * 0.5, h * 0.9, h, 0)
+      ctx.stroke()
+    },
+  },
+  {
+    id: 'dashes',
+    label: 'DASHES',
+    category: 'graphic',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = s / 2
+      ctx.beginPath()
+      for (let i = -1; i <= 1; i++) {
+        ctx.moveTo(-h, i * s * 0.32)
+        ctx.lineTo(h, i * s * 0.32)
+      }
+      ctx.stroke()
+    },
+  },
+  {
+    id: 'squareDot',
+    label: 'SQUARE + DOT',
+    category: 'graphic',
+    paint: 'stroke',
+    draw: (ctx, s, sw) => {
+      ctx.lineWidth = sw
+      const h = Math.max(sw, s / 2 - sw / 2)
+      ctx.beginPath()
+      ctx.rect(-h, -h, h * 2, h * 2)
+      ctx.stroke()
+      ctx.lineWidth = Math.max(sw, s * 0.24)
+      ctx.beginPath()
+      ctx.moveTo(0, 0)
+      ctx.lineTo(0.01, 0)
       ctx.stroke()
     },
   },

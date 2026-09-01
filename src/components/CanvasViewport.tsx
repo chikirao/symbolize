@@ -27,6 +27,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
   const maps = useEditor((s) => s.maps)
   const image = useEditor((s) => s.image)
   const customSymbols = useEditor((s) => s.customSymbols)
+  const textSymbols = useEditor((s) => s.textSymbols)
   const view = useEditor((s) => s.view)
   const interacting = useEditor((s) => s.interacting)
   const glitchToken = useEditor((s) => s.glitchToken)
@@ -64,6 +65,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
       settings,
       original: image.canvas,
       customSymbols,
+      textSymbols,
     }
 
     // Heavy grids would freeze the tab for a second or more: draw those in
@@ -109,7 +111,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
     }
 
     finish(renderComposite(req))
-  }, [maps, image, settings, customSymbols, interacting, view.quality, setStats])
+  }, [maps, image, settings, customSymbols, textSymbols, interacting, view.quality, setStats])
 
   useEffect(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)

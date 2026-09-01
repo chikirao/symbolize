@@ -19,6 +19,7 @@ export function ExportPanel() {
   const maps = useEditor((s) => s.maps)
   const settings = useEditor((s) => s.settings)
   const customSymbols = useEditor((s) => s.customSymbols)
+  const textSymbols = useEditor((s) => s.textSymbols)
   const setStatus = useEditor((s) => s.setStatus)
 
   const [format, setFormat] = useState<ExportFormat>('png')
@@ -64,6 +65,7 @@ export function ExportPanel() {
           maps,
           original: image.canvas,
           customSymbols,
+          textSymbols,
           width: targetW,
           height: targetH,
           format,

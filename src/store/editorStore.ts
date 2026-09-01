@@ -7,6 +7,7 @@ import type {
   PreviewQuality,
   RenderStats,
   SourceMaps,
+  TextSymbolDef,
 } from '../types/editor'
 import { buildSourceMaps } from '../engine/luminance'
 import { invalidateSilhouetteCache } from '../engine/renderer'
@@ -19,7 +20,32 @@ import {
 } from '../engine/presets'
 import { randomSeed } from '../engine/random'
 import { clearTintCache } from '../engine/tint'
+import { ALL_SYMBOL_IDS } from '../engine/symbols'
+import { splitGlyphs } from '../engine/textSymbols'
 import { getPath, setPath } from './path'
+
+/**
+ * Keeps the symbol pool in sync with the library: presets saved before a symbol
+ * existed must not hide it, and session-loaded custom / glyph symbols have to
+ * survive a preset switch.
+ */
+function normalisePool(
+  settings: EditorSettings,
+  extras: { id: string }[],
+  enableExtras = false,
+): EditorSettings {
+  for (const id of ALL_SYMBOL_IDS) {
+    if (!settings.symbols.pool.includes(id)) settings.symbols.pool.push(id)
+    if (settings.symbols.enabled[id] === undefined) settings.symbols.enabled[id] = false
+    if (settings.symbols.weights[id] === undefined) settings.symbols.weights[id] = 1
+  }
+  for (const e of extras) {
+    if (!settings.symbols.pool.includes(e.id)) settings.symbols.pool.push(e.id)
+    if (settings.symbols.enabled[e.id] === undefined) settings.symbols.enabled[e.id] = enableExtras
+    if (settings.symbols.weights[e.id] === undefined) settings.symbols.weights[e.id] = 1
+  }
+  return settings
+}
 
 export type StatusKind = 'ready' | 'busy' | 'error'
 
@@ -45,6 +71,7 @@ interface EditorStore {
   image: LoadedImage | null
   maps: SourceMaps | null
   customSymbols: CustomSymbolDef[]
+  textSymbols: TextSymbolDef[]
   presets: Preset[]
   activePresetId: string | null
   view: ViewState
@@ -67,6 +94,10 @@ interface EditorStore {
   removeCustomSymbol: (id: string) => void
   setCustomRecolor: (id: string, recolor: boolean) => void
 
+  addTextSymbols: (input: string, font: string, bold: boolean) => number
+  removeTextSymbol: (id: string) => void
+  clearTextSymbols: () => void
+
   applyPreset: (id: string) => void
   saveCurrentPreset: (name: string) => void
   deletePreset: (id: string) => void
@@ -87,6 +118,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
   image: null,
   maps: null,
   customSymbols: [],
+  textSymbols: [],
   presets: [...BUILTIN_PRESETS, ...loadUserPresets()],
   activePresetId: null,
   view: {
@@ -136,7 +168,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
   resetAll: () => {
     invalidateSilhouetteCache()
     set((s) => ({
-      settings: clone(DEFAULT_SETTINGS),
+      settings: normalisePool(clone(DEFAULT_SETTINGS), [...s.customSymbols, ...s.textSymbols]),
       activePresetId: null,
       glitchToken: s.glitchToken + 1,
       status: { kind: 'ready', message: 'SETTINGS RESET', progress: -1 },
@@ -194,18 +226,67 @@ export const useEditor = create<EditorStore>((set, get) => ({
     }))
   },
 
+  addTextSymbols: (input, font, bold) => {
+    const chars = splitGlyphs(input)
+    if (chars.length === 0) return 0
+    const stamp = Date.now().toString(36)
+    const defs: TextSymbolDef[] = chars.map((char, i) => ({
+      id: 'glyph-' + stamp + '-' + i.toString(36),
+      label: char,
+      char,
+      font,
+      bold,
+    }))
+    set((s) => {
+      const settings = clone(s.settings)
+      for (const d of defs) {
+        settings.symbols.pool.push(d.id)
+        settings.symbols.enabled[d.id] = true
+        settings.symbols.weights[d.id] = 1
+      }
+      return {
+        textSymbols: [...s.textSymbols, ...defs],
+        settings,
+        activePresetId: null,
+        glitchToken: s.glitchToken + 1,
+      }
+    })
+    return defs.length
+  },
+
+  removeTextSymbol: (id) => {
+    set((s) => {
+      const settings = clone(s.settings)
+      settings.symbols.pool = settings.symbols.pool.filter((p) => p !== id)
+      delete settings.symbols.enabled[id]
+      delete settings.symbols.weights[id]
+      return { textSymbols: s.textSymbols.filter((t) => t.id !== id), settings }
+    })
+  },
+
+  clearTextSymbols: () => {
+    set((s) => {
+      const ids = new Set(s.textSymbols.map((t) => t.id))
+      const settings = clone(s.settings)
+      settings.symbols.pool = settings.symbols.pool.filter((p) => !ids.has(p))
+      for (const id of ids) {
+        delete settings.symbols.enabled[id]
+        delete settings.symbols.weights[id]
+      }
+      return { textSymbols: [], settings }
+    })
+  },
+
   applyPreset: (id) => {
     const preset = get().presets.find((p) => p.id === id)
     if (!preset) return
     invalidateSilhouetteCache()
     set((s) => {
-      // keep any custom symbols the user loaded in this session available
-      const settings = clone(preset.settings)
-      for (const c of s.customSymbols) {
-        if (!settings.symbols.pool.includes(c.id)) settings.symbols.pool.push(c.id)
-        if (settings.symbols.enabled[c.id] === undefined) settings.symbols.enabled[c.id] = false
-        if (settings.symbols.weights[c.id] === undefined) settings.symbols.weights[c.id] = 1
-      }
+      // keep symbols the user loaded in this session available after a switch
+      const settings = normalisePool(clone(preset.settings), [
+        ...s.customSymbols,
+        ...s.textSymbols,
+      ])
       return {
         settings,
         activePresetId: id,

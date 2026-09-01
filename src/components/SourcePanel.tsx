@@ -3,6 +3,9 @@ import { useEditor } from '../store/editorStore'
 import { AsciiBox, Scramble } from './Primitives'
 import { buildDemoImage } from '../engine/demo'
 
+const THUMB_W = 108
+const THUMB_H = 78
+
 function Thumb(props: { canvas: HTMLCanvasElement | null; className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
@@ -10,24 +13,22 @@ function Thumb(props: { canvas: HTMLCanvasElement | null; className?: string }) 
     if (!c) return
     const ctx = c.getContext('2d')
     if (!ctx) return
-    const W = 120
-    const H = 90
     const dpr = Math.min(2, window.devicePixelRatio || 1)
-    c.width = W * dpr
-    c.height = H * dpr
+    c.width = THUMB_W * dpr
+    c.height = THUMB_H * dpr
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, W, H)
+    ctx.clearRect(0, 0, THUMB_W, THUMB_H)
     if (!props.canvas) return
-    const s = Math.min(W / props.canvas.width, H / props.canvas.height)
+    const s = Math.min(THUMB_W / props.canvas.width, THUMB_H / props.canvas.height)
     const w = props.canvas.width * s
     const h = props.canvas.height * s
     ctx.imageSmoothingEnabled = true
-    ctx.drawImage(props.canvas, (W - w) / 2, (H - h) / 2, w, h)
+    ctx.drawImage(props.canvas, (THUMB_W - w) / 2, (THUMB_H - h) / 2, w, h)
   }, [props.canvas])
   return (
     <canvas
       ref={ref}
-      style={{ width: 120, height: 90 }}
+      style={{ width: THUMB_W, height: THUMB_H }}
       className={'checker border border-line ' + (props.className || '')}
     />
   )
@@ -44,17 +45,15 @@ function MaskPreview() {
     if (!c) return
     const ctx = c.getContext('2d')
     if (!ctx) return
-    const W = 120
-    const H = 90
     const dpr = Math.min(2, window.devicePixelRatio || 1)
-    c.width = W * dpr
-    c.height = H * dpr
+    c.width = THUMB_W * dpr
+    c.height = THUMB_H * dpr
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.fillStyle = '#000'
-    ctx.fillRect(0, 0, W, H)
+    ctx.fillRect(0, 0, THUMB_W, THUMB_H)
     if (!maps) return
 
-    const s = Math.min(W / maps.imageWidth, H / maps.imageHeight)
+    const s = Math.min(THUMB_W / maps.imageWidth, THUMB_H / maps.imageHeight)
     const w = Math.max(1, Math.round(maps.imageWidth * s))
     const h = Math.max(1, Math.round(maps.imageHeight * s))
     const off = document.createElement('canvas')
@@ -93,10 +92,16 @@ function MaskPreview() {
     }
     octx.putImageData(img, 0, 0)
     ctx.imageSmoothingEnabled = true
-    ctx.drawImage(off, (W - w) / 2, (H - h) / 2, w, h)
+    ctx.drawImage(off, (THUMB_W - w) / 2, (THUMB_H - h) / 2, w, h)
   }, [maps, mask])
 
-  return <canvas ref={ref} style={{ width: 120, height: 90 }} className="border border-line" />
+  return (
+    <canvas
+      ref={ref}
+      style={{ width: THUMB_W, height: THUMB_H }}
+      className="border border-line"
+    />
+  )
 }
 
 export function SourcePanel(props: { onPickFile: () => void }) {
@@ -108,65 +113,60 @@ export function SourcePanel(props: { onPickFile: () => void }) {
   const setParam = useEditor((s) => s.setParam)
 
   return (
-    <div className="space-y-4">
-      <AsciiBox title="SOURCE" bodyClassName="p-2 pt-1">
-        <div className="flex gap-2">
+    <AsciiBox
+      title="SOURCE"
+      right={<span>{image ? `${image.width}x${image.height}` : 'NO IMAGE'}</span>}
+      bodyClassName="p-2 pt-1"
+    >
+      <div className="flex gap-2">
+        <div>
           <Thumb canvas={image?.canvas ?? null} />
-          <div className="text-xxs text-fg2 leading-snug min-w-0 flex-1">
-            <div className="text-fg truncate" title={image?.name}>
-              <Scramble text={image ? image.name : 'NO SOURCE'} token={image?.name} />
-            </div>
-            <div>
-              {image ? `${image.width} x ${image.height}` : '— x —'}
-            </div>
-            <div>{maps ? `MAP ${maps.width}x${maps.height}` : 'MAP —'}</div>
-            <div className="text-fg3 mt-1">LOCAL ONLY :: NO UPLOAD</div>
-          </div>
+          <div className="text-fg3 text-xxs mt-[2px]">SRC</div>
         </div>
-        <div className="flex flex-wrap gap-2 mt-2">
-          <button type="button" className="btn text-xxs" onClick={props.onPickFile}>
-            LOAD
-          </button>
-          <button
-            type="button"
-            className="btn text-xxs"
-            onClick={() => loadImageSource(buildDemoImage(), 'DEMO_BUST.PROC')}
-          >
-            DEMO
-          </button>
-          <button
-            type="button"
-            className="btn text-xxs btn-danger"
-            disabled={!image}
-            onClick={clearImage}
-          >
-            ! CLEAR
-          </button>
-        </div>
-      </AsciiBox>
-
-      <AsciiBox
-        title="MASK"
-        right={<span>{maskEnabled ? 'ON' : 'OFF'}</span>}
-        bodyClassName="p-2 pt-1"
-      >
-        <div className="flex gap-2">
+        <div>
           <MaskPreview />
-          <div className="text-xxs text-fg2 leading-snug flex-1 min-w-0">
-            <div className="text-fg3">WHITE = SYMBOLS ALLOWED</div>
-            <button
-              type="button"
-              className="tog text-xxs mt-1 block"
-              role="checkbox"
-              aria-checked={maskEnabled}
-              onClick={() => setParam('mask.enabled', !maskEnabled)}
-            >
-              {maskEnabled ? '[x]' : '[ ]'} ENABLE MASK
-            </button>
-            <div className="text-fg3 mt-1">TUNE IN THE MASK SECTION →</div>
-          </div>
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={maskEnabled}
+            className="tog text-xxs mt-[2px] block"
+            title="white area receives symbols"
+            onClick={() => setParam('mask.enabled', !maskEnabled)}
+          >
+            {maskEnabled ? '[x]' : '[ ]'} MASK
+          </button>
         </div>
-      </AsciiBox>
-    </div>
+      </div>
+
+      <div className="text-xxs text-fg2 leading-snug mt-1 min-w-0">
+        <span className="text-fg block truncate" title={image?.name}>
+          <Scramble text={image ? image.name : 'NO SOURCE'} token={image?.name} />
+        </span>
+        <span className="text-fg3">
+          {maps ? `MAP ${maps.width}x${maps.height} :: LOCAL ONLY, NO UPLOAD` : 'LOCAL ONLY'}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mt-1">
+        <button type="button" className="btn text-xxs" onClick={props.onPickFile}>
+          LOAD
+        </button>
+        <button
+          type="button"
+          className="btn text-xxs"
+          onClick={() => loadImageSource(buildDemoImage(), 'DEMO_BUST.PROC')}
+        >
+          DEMO
+        </button>
+        <button
+          type="button"
+          className="btn text-xxs btn-danger"
+          disabled={!image}
+          onClick={clearImage}
+        >
+          ! CLEAR
+        </button>
+      </div>
+    </AsciiBox>
   )
 }

@@ -4,6 +4,7 @@ import type {
   EditorSettings,
   RenderStats,
   SourceMaps,
+  TextSymbolDef,
 } from '../types/editor'
 import { buildGrid, type Cell } from './grid'
 import { sampleCell, sampleEdge } from './sampling'
@@ -12,6 +13,7 @@ import { rngAt, valueNoise } from './random'
 import { applyAdjust, buildGradientLUT, hexToRgb, LUT_SIZE } from './gradients'
 import { SYMBOL_MAP, type SymbolDef } from './symbols'
 import { getTinted } from './tint'
+import { drawTextSymbol } from './textSymbols'
 
 /* ------------------------------------------------------------------ */
 /* small helpers                                                       */
@@ -75,14 +77,17 @@ export interface ResolvedSymbol {
   id: string
   builtin: SymbolDef | null
   custom: CustomSymbolDef | null
+  text: TextSymbolDef | null
   weight: number
 }
 
 export function resolvePool(
   settings: EditorSettings,
   customSymbols: CustomSymbolDef[],
+  textSymbols: TextSymbolDef[] = [],
 ): ResolvedSymbol[] {
   const customMap = new Map(customSymbols.map((c) => [c.id, c]))
+  const textMap = new Map(textSymbols.map((t) => [t.id, t]))
   const pool: ResolvedSymbol[] = []
   for (const id of settings.symbols.pool) {
     if (!settings.symbols.enabled[id]) continue
@@ -91,12 +96,13 @@ export function resolvePool(
     if (weight <= 0) continue
     const builtin = SYMBOL_MAP[id] || null
     const custom = customMap.get(id) || null
-    if (!builtin && !custom) continue
-    pool.push({ id, builtin, custom, weight })
+    const text = textMap.get(id) || null
+    if (!builtin && !custom && !text) continue
+    pool.push({ id, builtin, custom, text, weight })
   }
   if (pool.length === 0) {
     const fallback = SYMBOL_MAP['dot']
-    pool.push({ id: 'dot', builtin: fallback, custom: null, weight: 1 })
+    pool.push({ id: 'dot', builtin: fallback, custom: null, text: null, weight: 1 })
   }
   return pool
 }
@@ -457,6 +463,12 @@ export function drawElements(
           /* image not decoded yet */
         }
       }
+    } else if (entry.text) {
+      if (key !== lastFillKey) {
+        ctx.fillStyle = colorString(r, g, b)
+        lastFillKey = key
+      }
+      drawTextSymbol(ctx, entry.text, size)
     } else if (entry.builtin) {
       // set only the style the routine actually consumes
       if (entry.builtin.paint === 'fill') {
@@ -559,6 +571,7 @@ export interface RenderRequest {
   settings: EditorSettings
   original: CanvasImageSource | null
   customSymbols: CustomSymbolDef[]
+  textSymbols?: TextSymbolDef[]
 }
 
 interface Prepared {
@@ -569,7 +582,7 @@ interface Prepared {
 
 function prepare(req: RenderRequest): Prepared {
   const cells = buildGrid(req.settings, req.maps.imageWidth, req.maps.imageHeight)
-  const pool = resolvePool(req.settings, req.customSymbols)
+  const pool = resolvePool(req.settings, req.customSymbols, req.textSymbols)
   const buf = calculateElements(req.maps, req.settings, cells, pool)
   return { cells, buf, pool }
 }
