@@ -20,6 +20,7 @@ import {
 } from '../engine/presets'
 import { randomSeed } from '../engine/random'
 import { clearTintCache } from '../engine/tint'
+import { invalidateSelectionCache, sampleColourAt } from '../engine/selection'
 import { ALL_SYMBOL_IDS } from '../engine/symbols'
 import { splitGlyphs } from '../engine/textSymbols'
 import { getPath, setPath } from './path'
@@ -58,6 +59,8 @@ export interface ViewState {
   split: number // 0..1
   quality: PreviewQuality
   fitToken: number // bump to request a fit-to-screen
+  /** pan drags the canvas; pick samples a colour for the selection mask */
+  tool: 'pan' | 'pick'
 }
 
 export interface StatusState {
@@ -102,6 +105,10 @@ interface EditorStore {
   saveCurrentPreset: (name: string) => void
   deletePreset: (id: string) => void
 
+  addMaskPick: (nx: number, ny: number) => void
+  removeMaskPick: (index: number) => void
+  clearMaskPicks: () => void
+
   randomizeSeed: () => void
   setView: (patch: Partial<ViewState>) => void
   requestFit: () => void
@@ -130,6 +137,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
     split: 0.5,
     quality: 'high',
     fitToken: 0,
+    tool: 'pan',
   },
   status: { kind: 'ready', message: 'READY', progress: -1 },
   stats: null,
@@ -182,6 +190,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
 
   loadImageSource: (canvas, name) => {
     invalidateSilhouetteCache()
+    invalidateSelectionCache()
     const maps = buildSourceMaps(canvas)
     set((s) => ({
       image: { name, width: canvas.width, height: canvas.height, canvas },
@@ -194,6 +203,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
 
   clearImage: () => {
     invalidateSilhouetteCache()
+    invalidateSelectionCache()
     set({ image: null, maps: null, stats: null })
   },
 
@@ -308,6 +318,40 @@ export const useEditor = create<EditorStore>((set, get) => ({
     const presets = get().presets.filter((p) => p.id !== id || p.builtin)
     set((s) => ({ presets, activePresetId: s.activePresetId === id ? null : s.activePresetId }))
     saveUserPresets(presets.filter((p) => !p.builtin))
+  },
+
+  addMaskPick: (nx, ny) => {
+    const maps = get().maps
+    if (!maps) return
+    const color = sampleColourAt(maps, nx, ny)
+    set((s) => {
+      const settings = clone(s.settings)
+      settings.mask.picks = [...settings.mask.picks, { color, x: nx, y: ny }]
+      // picking a colour is a clear intent: turn the mask on and point it here
+      settings.mask.enabled = true
+      settings.mask.source = 'color'
+      return {
+        settings,
+        activePresetId: null,
+        status: { kind: 'ready' as const, message: 'PICKED ' + color, progress: -1 },
+      }
+    })
+  },
+
+  removeMaskPick: (index) => {
+    set((s) => {
+      const settings = clone(s.settings)
+      settings.mask.picks = settings.mask.picks.filter((_, i) => i !== index)
+      return { settings, activePresetId: null }
+    })
+  },
+
+  clearMaskPicks: () => {
+    set((s) => {
+      const settings = clone(s.settings)
+      settings.mask.picks = []
+      return { settings, activePresetId: null }
+    })
   },
 
   randomizeSeed: () => {

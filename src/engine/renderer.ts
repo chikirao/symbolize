@@ -14,6 +14,7 @@ import { applyAdjust, buildGradientLUT, hexToRgb, LUT_SIZE } from './gradients'
 import { SYMBOL_MAP, type SymbolDef } from './symbols'
 import { getTinted } from './tint'
 import { drawTextSymbol } from './textSymbols'
+import { getSelectionMask, sampleSelection } from './selection'
 
 /* ------------------------------------------------------------------ */
 /* small helpers                                                       */
@@ -63,9 +64,15 @@ function sourceValue(lum: number, alpha: number, mode: EditorSettings['source'][
   return lum
 }
 
-function maskValue(lum: number, alpha: number, source: EditorSettings['mask']['source']): number {
+function maskValue(
+  lum: number,
+  alpha: number,
+  selection: number,
+  source: EditorSettings['mask']['source'],
+): number {
   if (source === 'luminance') return lum
   if (source === 'combined') return lum * alpha
+  if (source === 'color') return selection
   return alpha
 }
 
@@ -178,6 +185,7 @@ export function calculateElements(
   const tmpColor: [number, number, number] = [0, 0, 0]
 
   const edgeMap = settings.edges.enabled ? buildEdgeMap(maps) : null
+  const selection = getSelectionMask(maps, settings.mask)
   const cellSize = Math.max(1, settings.grid.cellSize)
 
   const cxCentre = imgW / 2
@@ -222,7 +230,8 @@ export function calculateElements(
     // ---- mask -------------------------------------------------------
     let maskF = 1
     if (mk.enabled) {
-      const mv = maskValue(rawLum, rawAlpha, mk.source)
+      const sel = selection ? sampleSelection(maps, selection, cell.x, cell.y, cell.cw, cell.ch) : 0
+      const mv = maskValue(rawLum, rawAlpha, sel, mk.source)
       maskF =
         mk.feather <= 0.0005
           ? mv >= mk.threshold
@@ -528,6 +537,9 @@ function silhouetteCanvas(maps: SourceMaps, settings: EditorSettings): HTMLCanva
     mk.invert,
     mk.enabled,
     mk.silhouette.color,
+    mk.tolerance,
+    mk.contiguous,
+    mk.picks.map((p) => p.color + '@' + p.x.toFixed(3) + ',' + p.y.toFixed(3)).join(';'),
   ].join('|')
   if (silCache && silCache.key === key) return silCache.canvas
 
@@ -539,9 +551,10 @@ function silhouetteCanvas(maps: SourceMaps, settings: EditorSettings): HTMLCanva
   const d = img.data
   const [fr, fg, fb] = hexToRgb(mk.silhouette.color)
   const n = maps.width * maps.height
+  const selection = getSelectionMask(maps, mk)
   for (let i = 0; i < n; i++) {
     const mv = mk.enabled
-      ? maskValue(maps.lum[i], maps.alpha[i], mk.source)
+      ? maskValue(maps.lum[i], maps.alpha[i], selection ? selection[i] / 255 : 0, mk.source)
       : maps.alpha[i]
     let f =
       mk.feather <= 0.0005

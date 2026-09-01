@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { useEditor } from '../store/editorStore'
 import { AsciiBox, Scramble } from './Primitives'
 import { buildDemoImage } from '../engine/demo'
+import { getSelectionMask } from '../engine/selection'
 
 const THUMB_W = 108
 const THUMB_H = 78
@@ -63,6 +64,7 @@ function MaskPreview() {
     if (!octx) return
     const img = octx.createImageData(w, h)
     const d = img.data
+    const selection = getSelectionMask(maps, mask)
     for (let y = 0; y < h; y++) {
       const sy = Math.min(maps.height - 1, Math.floor((y / h) * maps.height))
       for (let x = 0; x < w; x++) {
@@ -73,7 +75,11 @@ function MaskPreview() {
             ? maps.lum[i]
             : mask.source === 'combined'
               ? maps.lum[i] * maps.alpha[i]
-              : maps.alpha[i]
+              : mask.source === 'color'
+                ? selection
+                  ? selection[i] / 255
+                  : 0
+                : maps.alpha[i]
         let f: number
         if (mask.feather <= 0.0005) f = mv >= mask.threshold ? 1 : 0
         else {

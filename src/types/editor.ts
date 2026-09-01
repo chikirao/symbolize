@@ -17,11 +17,19 @@ export type ColorMode =
 export type OpacityMode = 'constant' | 'luminance' | 'alpha'
 export type DensityMode = 'constant' | 'dark' | 'light'
 export type SymbolSelectMode = 'random' | 'luminance' | 'sequential' | 'noise'
-export type MaskSource = 'alpha' | 'luminance' | 'combined'
+export type MaskSource = 'alpha' | 'luminance' | 'combined' | 'color'
 export type EdgeShapeMode = 'inside' | 'edges' | 'both'
 export type BlendMode = 'normal' | 'multiply' | 'screen' | 'overlay' | 'lighten' | 'darken'
 export type BackgroundMode = 'transparent' | 'white' | 'black' | 'custom'
 export type PreviewQuality = 'low' | 'medium' | 'high'
+
+export interface ColorPick {
+  /** #rrggbb sampled from the image */
+  color: string
+  /** seed position, normalised 0..1 — used when the selection is contiguous */
+  x: number
+  y: number
+}
 
 export interface GradientStop {
   id: string
@@ -113,6 +121,12 @@ export interface EditorSettings {
     threshold: number
     feather: number
     invert: boolean
+    /** colours picked off the image for the COLOR RANGE source */
+    picks: ColorPick[]
+    /** how far a pixel may sit from a picked colour and still count (0..1) */
+    tolerance: number
+    /** magic wand: keep only the region connected to the pick, not every match */
+    contiguous: boolean
     silhouette: {
       enabled: boolean
       color: string

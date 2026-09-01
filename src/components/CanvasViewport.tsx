@@ -168,8 +168,30 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
 
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
 
+  /** Screen point -> normalised image coordinates, or null when outside. */
+  const toImageUV = (clientX: number, clientY: number): [number, number] | null => {
+    const el = containerRef.current
+    if (!el || !image) return null
+    const rect = el.getBoundingClientRect()
+    const fw = image.width * view.zoom
+    const fh = image.height * view.zoom
+    const left = rect.width / 2 + view.panX - fw / 2
+    const top = rect.height / 2 + view.panY - fh / 2
+    const u = (clientX - rect.left - left) / fw
+    const v = (clientY - rect.top - top) / fh
+    if (u < 0 || u > 1 || v < 0 || v > 1) return null
+    return [u, v]
+  }
+
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 && e.button !== 1) return
+    if (view.tool === 'pick' && e.button === 0) {
+      const uv = toImageUV(e.clientX, e.clientY)
+      if (uv) {
+        useEditor.getState().addMaskPick(uv[0], uv[1])
+        return
+      }
+    }
     const el = e.currentTarget as HTMLElement
     el.setPointerCapture(e.pointerId)
     drag.current = { x: e.clientX, y: e.clientY, px: view.panX, py: view.panY }
@@ -246,6 +268,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
       title={<span className="text-fg">CANVAS</span>}
       right={
         <span>
+          {view.tool === 'pick' && <span className="text-fg">PICK :: </span>}
           {image ? `${image.width}x${image.height}` : 'NO SOURCE'} :: {zoomPct}%
         </span>
       }
@@ -259,7 +282,10 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
       <div
         ref={containerRef}
         className="relative flex-1 min-h-0 w-full overflow-hidden select-none"
-        style={{ cursor: image ? 'grab' : 'default', touchAction: 'none' }}
+        style={{
+          cursor: !image ? 'default' : view.tool === 'pick' ? 'crosshair' : 'grab',
+          touchAction: 'none',
+        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

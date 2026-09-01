@@ -5,6 +5,7 @@ import { ParamColor, ParamRadio, ParamSelect, ParamSlider, ParamToggle } from '.
 import { GradientEditor } from './GradientEditor'
 import { ExportPanel } from './ExportPanel'
 import { SeedControl } from './SeedControl'
+import { SelectionPicker } from './SelectionPicker'
 
 const DEFAULT_OPEN = ['grid', 'size', 'color']
 
@@ -362,12 +363,31 @@ export function ControlPanel() {
             { value: 'alpha', label: 'SOURCE ALPHA' },
             { value: 'luminance', label: 'LUMINANCE' },
             { value: 'combined', label: 'LUM x ALPHA' },
+            { value: 'color', label: 'COLOR RANGE' },
           ]}
           width={13}
         />
+        {settings.mask.source === 'color' && (
+          <>
+            <SelectionPicker />
+            <ParamSlider
+              path="mask.tolerance"
+              label="TOLERANCE"
+              min={0.01}
+              max={1}
+              step={0.005}
+              decimals={3}
+              hint="How far a pixel may sit from a picked colour and still be selected."
+            />
+          </>
+        )}
         <ParamSlider path="mask.threshold" label="MASK THRESHOLD" min={0} max={1} step={0.01} decimals={2} />
         <ParamSlider path="mask.feather" label="MASK FEATHER" min={0} max={0.5} step={0.005} decimals={3} />
-        <ParamToggle path="mask.invert" label="INVERT MASK" />
+        <ParamToggle
+          path="mask.invert"
+          label="INVERT MASK"
+          hint="Flip it to knock the selected colour out instead of keeping only it."
+        />
         <div className="hr text-xxs my-1 select-none">── SILHOUETTE {'─'.repeat(40)}</div>
         <ParamToggle path="mask.silhouette.enabled" label="SHOW FILL" />
         <ParamColor path="mask.silhouette.color" label="FILL COLOR" />
