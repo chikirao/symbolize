@@ -179,7 +179,6 @@ export function calculateElements(
 
   const edgeMap = settings.edges.enabled ? buildEdgeMap(maps) : null
   const cellSize = Math.max(1, settings.grid.cellSize)
-  const gradStep = Math.max(1, cellSize * maps.scale * 0.6)
 
   const cxCentre = imgW / 2
   const cyCentre = imgH / 2
@@ -295,7 +294,7 @@ export function calculateElements(
     if (sz.mode === 'constant') sf = 1
     else if (sz.mode === 'dark-large') sf = Math.pow(1 - v, Math.max(0.05, sz.gamma))
     else sf = Math.pow(v, Math.max(0.05, sz.gamma))
-    let size = lerp(sz.min, sz.max, sf) * cellSize
+    let size = lerp(sz.min, sz.max, sf) * cell.unit
     if (sz.jitter > 0) size *= 1 + (rSize - 0.5) * 2 * sz.jitter
     if (th.soft > 0.0005) size *= lerp(0.45, 1, thF)
     if (mk.enabled && mk.feather > 0.0005) size *= lerp(0.45, 1, maskF)
@@ -313,6 +312,7 @@ export function calculateElements(
         rot = rt.base + lerp(rt.min, rt.max, v)
         break
       case 'gradient': {
+        const gradStep = Math.max(1, cell.unit * maps.scale * 0.6)
         const ang =
           (gradientAngleAt(maps, cell.x * maps.scale, cell.y * maps.scale, gradStep) * 180) /
           Math.PI
@@ -347,6 +347,11 @@ export function calculateElements(
         cr = solidAdj[0]
         cg = solidAdj[1]
         cb = solidAdj[2]
+        break
+      case 'source-image':
+        cr = 255
+        cg = 255
+        cb = 255
         break
       case 'source': {
         applyAdjust(sr, sg, sb, adj, tmpColor)
@@ -581,7 +586,7 @@ interface Prepared {
 }
 
 function prepare(req: RenderRequest): Prepared {
-  const cells = buildGrid(req.settings, req.maps.imageWidth, req.maps.imageHeight)
+  const cells = buildGrid(req.settings, req.maps)
   const pool = resolvePool(req.settings, req.customSymbols, req.textSymbols)
   const buf = calculateElements(req.maps, req.settings, cells, pool)
   return { cells, buf, pool }
@@ -617,7 +622,10 @@ function patternTarget(req: RenderRequest): {
   offscreen: HTMLCanvasElement | null
 } {
   const layer = req.settings.layers.pattern
-  const needsOffscreen = layer.blend !== 'normal' || layer.opacity < 0.999
+  const needsOffscreen =
+    layer.blend !== 'normal' ||
+    layer.opacity < 0.999 ||
+    req.settings.color.mode === 'source-image'
   if (!needsOffscreen) return { ctx: req.ctx, offscreen: null }
   const c = document.createElement('canvas')
   c.width = req.outputWidth
@@ -627,6 +635,22 @@ function patternTarget(req: RenderRequest): {
 
 function compositePattern(req: RenderRequest, offscreen: HTMLCanvasElement | null): void {
   if (!offscreen) return
+
+  // ORIGINAL PIXELS: the symbols so far are an alpha stencil — punch the source
+  // image through them so every symbol shows the real colours underneath it.
+  if (req.settings.color.mode === 'source-image' && req.original) {
+    const octx = offscreen.getContext('2d')
+    if (octx) {
+      octx.setTransform(1, 0, 0, 1, 0, 0)
+      octx.globalAlpha = 1
+      octx.globalCompositeOperation = 'source-in'
+      octx.imageSmoothingEnabled = true
+      octx.imageSmoothingQuality = 'high'
+      octx.drawImage(req.original, 0, 0, offscreen.width, offscreen.height)
+      octx.globalCompositeOperation = 'source-over'
+    }
+  }
+
   const layer = req.settings.layers.pattern
   req.ctx.setTransform(1, 0, 0, 1, 0, 0)
   req.ctx.globalCompositeOperation = BLEND_MAP[layer.blend]

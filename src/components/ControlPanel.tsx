@@ -55,11 +55,75 @@ export function ControlPanel() {
             { value: 'staggered', label: 'STAGGERED' },
             { value: 'hex', label: 'HEXAGONAL' },
             { value: 'random', label: 'RANDOM' },
+            { value: 'adaptive', label: 'ADAPTIVE' },
           ]}
         />
-        <ParamSlider path="grid.cellSize" label="CELL SIZE" min={2} max={100} step={1} decimals={0} suffix="px" />
-        <ParamSlider path="grid.spacingX" label="X SPACING" min={0.1} max={4} step={0.01} decimals={2} />
-        <ParamSlider path="grid.spacingY" label="Y SPACING" min={0.1} max={4} step={0.01} decimals={2} />
+        <ParamSlider
+          path="grid.cellSize"
+          label={settings.grid.mode === 'adaptive' ? 'MAX CELL' : 'CELL SIZE'}
+          min={2}
+          max={160}
+          step={1}
+          decimals={0}
+          suffix="px"
+          hint={
+            settings.grid.mode === 'adaptive'
+              ? 'Coarsest cell. Flat areas keep this size.'
+              : undefined
+          }
+        />
+        {settings.grid.mode === 'adaptive' && (
+          <>
+            <ParamSlider
+              path="grid.minCellSize"
+              label="MIN CELL"
+              min={1}
+              max={64}
+              step={1}
+              decimals={0}
+              suffix="px"
+              hint="Finest cell the split may reach."
+            />
+            <ParamSlider
+              path="grid.detail"
+              label="DETAIL"
+              min={0.01}
+              max={1}
+              step={0.01}
+              decimals={2}
+              hint="Local contrast above which a cell splits into four. Lower = more small symbols."
+            />
+            <ParamSlider
+              path="grid.maxDepth"
+              label="MAX DEPTH"
+              min={0}
+              max={7}
+              step={1}
+              decimals={0}
+            />
+            <div className="pl-3 text-xxs text-fg3 leading-snug">
+              FLAT AREAS = ONE BIG SYMBOL. BUSY AREAS SPLIT INTO FOUR.
+            </div>
+          </>
+        )}
+        <ParamSlider
+          path="grid.spacingX"
+          label="X SPACING"
+          min={0.1}
+          max={4}
+          step={0.01}
+          decimals={2}
+          disabled={settings.grid.mode === 'adaptive'}
+        />
+        <ParamSlider
+          path="grid.spacingY"
+          label="Y SPACING"
+          min={0.1}
+          max={4}
+          step={0.01}
+          decimals={2}
+          disabled={settings.grid.mode === 'adaptive'}
+        />
         <ParamSlider path="grid.offsetX" label="OFFSET X" min={-1} max={1} step={0.01} decimals={2} />
         <ParamSlider path="grid.offsetY" label="OFFSET Y" min={-1} max={1} step={0.01} decimals={2} />
         <ParamSlider path="grid.rotation" label="GRID ROTATION" min={-180} max={180} step={1} decimals={0} suffix="d" />
@@ -210,7 +274,8 @@ export function ControlPanel() {
           width={15}
           options={[
             { value: 'solid', label: 'SOLID' },
-            { value: 'source', label: 'SOURCE COLOR' },
+            { value: 'source', label: 'ORIGINAL AVG' },
+            { value: 'source-image', label: 'ORIGINAL PIXELS' },
             { value: 'luminance-gradient', label: 'GRAD/LUMINANCE' },
             { value: 'x-gradient', label: 'GRAD/POSITION X' },
             { value: 'y-gradient', label: 'GRAD/POSITION Y' },
@@ -218,6 +283,18 @@ export function ControlPanel() {
           ]}
         />
         {colorMode === 'solid' && <ParamColor path="color.solid" label="COLOR" />}
+        {colorMode === 'source' && (
+          <div className="pl-3 text-xxs text-fg3 leading-snug">
+            AVERAGE RGB OF EACH CELL, ONE FLAT COLOR PER SYMBOL.
+          </div>
+        )}
+        {colorMode === 'source-image' && (
+          <div className="pl-3 text-xxs text-fg3 leading-snug">
+            THE SOURCE IMAGE SHOWS THROUGH EACH SYMBOL.
+            <br />
+            HUE / SAT / BRIGHT BELOW DO NOT APPLY HERE.
+          </div>
+        )}
         {usesGradient && (
           <GradientEditor
             stops={settings.color.stops}

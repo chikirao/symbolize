@@ -27,7 +27,8 @@ export function sampleCell(
   const h = maps.height
   const fw = cw * s
   const fh = ch * s
-  const k = Math.max(1, Math.min(4, Math.round(Math.min(fw, fh) / 1.6)))
+  // large adaptive cells need more taps to average honestly; small cells stay cheap
+  const k = Math.max(1, Math.min(6, Math.round(Math.min(fw, fh) / 1.6)))
 
   const ax = x * s
   const ay = y * s

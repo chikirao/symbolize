@@ -30,6 +30,9 @@ export const DEFAULT_SETTINGS: EditorSettings = {
     rotation: 0,
     jitterX: 0,
     jitterY: 0,
+    minCellSize: 5,
+    detail: 0.18,
+    maxDepth: 4,
   },
   source: {
     mode: 'luminance',
@@ -208,6 +211,54 @@ export const BUILTIN_PRESETS: Preset[] = [
     s.edges.enabled = true
     s.edges.mode = 'both'
     s.edges.boost = 1.1
+    s.layers.background.mode = 'black'
+  }),
+  makePreset('detail-mosaic', 'DETAIL MOSAIC', (s) => {
+    s.grid.mode = 'adaptive'
+    s.grid.cellSize = 56
+    s.grid.minCellSize = 7
+    s.grid.detail = 0.16
+    s.grid.maxDepth = 4
+    s.symbols.enabled = enabledMap([
+      'arrowUpRight',
+      'ring',
+      'cross',
+      'checker',
+      'dot',
+      'squareFilled',
+      'chevron',
+    ])
+    s.symbols.selectMode = 'random'
+    s.symbols.strokeWeight = 0.16
+    s.size.mode = 'constant'
+    s.size.min = 0.86
+    s.size.max = 0.86
+    s.size.clamp = true
+    s.rotation.mode = 'random'
+    s.rotation.min = -12
+    s.rotation.max = 12
+    s.color.mode = 'luminance-gradient'
+    s.color.reverse = true
+    s.opacity.mode = 'constant'
+    s.opacity.max = 1
+    s.layers.background.mode = 'black'
+  }),
+  makePreset('true-color', 'TRUE COLOR', (s) => {
+    s.grid.mode = 'adaptive'
+    s.grid.cellSize = 40
+    s.grid.minCellSize = 6
+    s.grid.detail = 0.14
+    s.grid.maxDepth = 4
+    s.symbols.enabled = enabledMap(['roundedSquare', 'dot', 'hexagon'])
+    s.symbols.selectMode = 'random'
+    s.size.mode = 'constant'
+    s.size.min = 1
+    s.size.max = 1
+    s.size.clamp = true
+    s.rotation.mode = 'fixed'
+    s.color.mode = 'source-image'
+    s.opacity.mode = 'constant'
+    s.opacity.max = 1
     s.layers.background.mode = 'black'
   }),
   makePreset('source-colors', 'SOURCE COLORS', (s) => {

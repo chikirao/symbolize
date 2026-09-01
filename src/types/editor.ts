@@ -1,6 +1,6 @@
 /* Central data model for the symbol-halftone engine. */
 
-export type GridMode = 'square' | 'staggered' | 'hex' | 'random'
+export type GridMode = 'square' | 'staggered' | 'hex' | 'random' | 'adaptive'
 export type SourceMode = 'luminance' | 'alpha' | 'combined'
 export type SizeMode = 'dark-large' | 'light-large' | 'constant'
 export type RotationMode = 'fixed' | 'random' | 'luminance' | 'gradient'
@@ -8,6 +8,7 @@ export type GradientDir = 'along' | 'perpendicular'
 export type ColorMode =
   | 'solid'
   | 'source'
+  | 'source-image'
   | 'luminance-gradient'
   | 'x-gradient'
   | 'y-gradient'
@@ -38,6 +39,12 @@ export interface EditorSettings {
     rotation: number // degrees
     jitterX: number // fraction of stepX
     jitterY: number
+    /** adaptive mode: smallest cell the quadtree may split down to, in image px */
+    minCellSize: number
+    /** adaptive mode: local contrast above which a cell splits (0..1) */
+    detail: number
+    /** adaptive mode: maximum number of splits */
+    maxDepth: number
   }
   source: {
     mode: SourceMode
