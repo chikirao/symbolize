@@ -1,9 +1,42 @@
+import demoBunnyUrl from '../assets/demo-bunny.jpg'
+
 /**
- * Procedural bust silhouette used on first run so the app never opens on an
- * empty grey canvas. Transparent background + soft internal shading, which
- * exercises luminance, alpha and edge paths straight away.
+ * The real demo image: a toy on a flat dark background. Bundled as a local
+ * asset (never fetched over the network) and decoded on demand. Falls back to
+ * the procedural bust below if decoding ever fails, so first run never opens
+ * on an empty canvas.
  */
-export function buildDemoImage(w = 900, h = 1120): HTMLCanvasElement {
+export async function loadDemoImage(): Promise<HTMLCanvasElement> {
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image()
+      el.onload = () => resolve(el)
+      el.onerror = () => reject(new Error('DEMO IMAGE DECODE FAILED'))
+      el.src = demoBunnyUrl
+    })
+    const w = img.naturalWidth || img.width
+    const h = img.naturalHeight || img.height
+    if (!w || !h) throw new Error('INVALID DEMO IMAGE')
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    const ctx = c.getContext('2d')
+    if (!ctx) throw new Error('CANVAS CONTEXT UNAVAILABLE')
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(img, 0, 0, w, h)
+    return c
+  } catch {
+    return buildProceduralDemoImage()
+  }
+}
+
+/**
+ * Procedural bust silhouette — the original built-in demo, kept as a fallback.
+ * Transparent background + soft internal shading, which exercises luminance,
+ * alpha and edge paths straight away.
+ */
+export function buildProceduralDemoImage(w = 900, h = 1120): HTMLCanvasElement {
   const c = document.createElement('canvas')
   c.width = w
   c.height = h

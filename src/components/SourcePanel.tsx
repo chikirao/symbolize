@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { useEditor } from '../store/editorStore'
 import { AsciiBox, Scramble } from './Primitives'
-import { buildDemoImage } from '../engine/demo'
+import { loadDemoImage } from '../engine/demo'
 import { getSelectionMask } from '../engine/selection'
 
 const THUMB_W = 108
@@ -160,7 +160,7 @@ export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void
         <button
           type="button"
           className="btn text-xxs"
-          onClick={() => loadImageSource(buildDemoImage(), 'DEMO_BUST.PROC')}
+          onClick={() => void loadDemoImage().then((c) => loadImageSource(c, 'DEMO_BUNNY.JPG'))}
         >
           DEMO
         </button>

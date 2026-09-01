@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
 import { scrambleSubtree } from '../ui/scramble'
 import { replayIntro } from '../ui/intro'
-import { buildDemoImage } from '../engine/demo'
+import { loadDemoImage } from '../engine/demo'
 import { buildFilename, downloadBlob, renderExport } from '../engine/export'
 import type { PreviewQuality } from '../types/editor'
 
@@ -153,7 +153,7 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
             { label: 'PASTE IMAGE  CTRL+V', onClick: props.onPaste },
             {
               label: 'LOAD DEMO',
-              onClick: () => loadImageSource(buildDemoImage(), 'DEMO_BUST.PROC'),
+              onClick: () => void loadDemoImage().then((c) => loadImageSource(c, 'DEMO_BUNNY.JPG')),
             },
             { label: 'CLEAR IMAGE', onClick: clearImage, disabled: !image },
             { label: '', divider: true },

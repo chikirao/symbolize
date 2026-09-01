@@ -9,7 +9,7 @@ import { SymbolLibrary } from './components/SymbolLibrary'
 import { StatusBar } from './components/StatusBar'
 import { AsciiBox } from './components/Primitives'
 import { armIntro, runIntro } from './ui/intro'
-import { buildDemoImage } from './engine/demo'
+import { loadDemoImage } from './engine/demo'
 import {
   imageFileFromTransfer,
   loadImageFile,
@@ -29,7 +29,7 @@ export default function App() {
 
   /* ---------------- first run ---------------- */
   useEffect(() => {
-    loadImageSource(buildDemoImage(), 'DEMO_BUST.PROC')
+    void loadDemoImage().then((canvas) => loadImageSource(canvas, 'DEMO_BUNNY.JPG'))
 
     const root = document.getElementById('root')
     const w = window as unknown as {
