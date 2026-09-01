@@ -305,7 +305,7 @@ export function mergeSettings(base: EditorSettings, patch: unknown): EditorSetti
   return out as unknown as EditorSettings
 }
 
-const LS_KEY = 'symbol-halftone.presets.v1'
+const LS_KEY = 'symbolize.presets.v1'
 
 export function loadUserPresets(): Preset[] {
   try {

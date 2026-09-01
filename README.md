@@ -1,4 +1,6 @@
-# SYMBOL_HALFTONE.exe
+# SYMBOLIZE.exe
+
+Live: https://chikirao.github.io/symbolize/
 
 Генератор эффекта **symbol / shape halftone portrait**: изображение превращается в мозаику из
 мелких символов, размер / цвет / поворот / плотность которых зависят от яркости, альфа-канала,
@@ -21,7 +23,7 @@ npm install
 npm run dev
 ```
 
-Дальше открыть `http://localhost:5173`.
+Дальше открыть `http://localhost:5173/symbolize/`.
 
 Production-сборка:
 
@@ -281,7 +283,7 @@ baseline, и масштабируются под размер ячейки.
 * все пространственные параметры (cell size, offsets, размеры символов) масштабируются
   пропорционально, композиция совпадает с превью;
 * рендер идёт чанками с прогрессом, вкладка не «замерзает»;
-* `[ DOWNLOAD ]` — файл `symbol-halftone-YYYY-MM-DD-HHMM.png`;
+* `[ DOWNLOAD ]` — файл `symbolize-YYYY-MM-DD-HHMM.png`;
 * `[ COPY PNG ]` — в буфер обмена, если браузер поддерживает `ClipboardItem`.
 
 Ограничения экспорта: максимум 8192 px по стороне и ~48 Мп (иначе canvas не выделяется).

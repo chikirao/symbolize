@@ -1,4 +1,4 @@
-/* Central data model for the symbol-halftone engine. */
+/* Central data model for the Symbolize engine. */
 
 export type GridMode = 'square' | 'staggered' | 'hex' | 'random' | 'adaptive'
 export type SourceMode = 'luminance' | 'alpha' | 'combined'

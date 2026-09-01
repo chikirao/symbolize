@@ -108,7 +108,7 @@ export function buildFilename(format: ExportFormat): string {
     pad(d.getHours()) +
     pad(d.getMinutes())
   const ext = format === 'jpeg' ? 'jpg' : format
-  return `symbol-halftone-${stamp}.${ext}`
+  return `symbolize-${stamp}.${ext}`
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {

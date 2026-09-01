@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SYMBOL_HALFTONE.exe</title>
+    <title>SYMBOLIZE.exe</title>
     <meta name="description" content="Symbol / shape halftone portrait generator. Local, in-browser, no uploads." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -46,7 +46,7 @@
     </style>
   </head>
   <body>
-    <div id="boot" role="status" aria-live="polite"><div id="boot-stage"><span id="boot-title">INITIALIZING SYMBOL ENGINE...</span>
+    <div id="boot" role="status" aria-live="polite"><div id="boot-stage"><span id="boot-title">INITIALIZING SYMBOLIZE...</span>
 <span id="boot-bar" class="dim">[                    ]</span>
 <span id="boot-log"></span></div>
       <div id="boot-prompt"><div id="boot-press"></div></div>
@@ -66,7 +66,7 @@
         var noiseEl = document.getElementById('boot-noise');
         var start = Date.now();
         var repeat = false;
-        try { repeat = sessionStorage.getItem('sh_booted') === '1'; sessionStorage.setItem('sh_booted', '1'); } catch (e) {}
+        try { repeat = sessionStorage.getItem('symbolize.booted') === '1'; sessionStorage.setItem('symbolize.booted', '1'); } catch (e) {}
         var MIN = reduced ? 0 : (repeat ? 320 : 620);
         var lines = ['> loading renderer', '> loading symbol library', '> allocating canvas', '> initializing interface', '> ready'];
         var glyphs = '░▒▓█';
@@ -125,7 +125,7 @@
           // the log stays where it is, finished: full bar, all lines printed
           if (log) log.textContent = lines.join('\n');
           if (bar) bar.textContent = '[████████████████████]';
-          scramble(title, 'SYMBOL ENGINE READY.', 260);
+          scramble(title, 'SYMBOLIZE READY.', 260);
           // armed straight away: a key pressed while the prompt is still
           // resolving must not fall through a gap and be lost
           promptAt = Date.now();

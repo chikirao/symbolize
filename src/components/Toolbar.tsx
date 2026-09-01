@@ -143,7 +143,7 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
 
   return (
     <div className="flex items-center gap-4 px-3 h-[26px] border-b border-line shrink-0">
-      <span className="text-fg text-xs2 tracking-[0.25em] select-none">SYMBOL_HALFTONE.exe</span>
+      <span className="text-fg text-xs2 tracking-[0.25em] select-none">SYMBOLIZE.exe</span>
 
       <div className="flex items-center gap-1">
         <Menu
