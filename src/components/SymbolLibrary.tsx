@@ -1,9 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { BUILTIN_SYMBOLS, SYMBOL_MAP } from '../engine/symbols'
+import { BUILTIN_SYMBOLS, SYMBOL_MAP, SYMBOL_SETS, type SymbolSet } from '../engine/symbols'
 import type { CustomSymbolDef, EditorSettings, TextSymbolDef } from '../types/editor'
 import { useEditor } from '../store/editorStore'
 import { loadCustomSymbol } from '../engine/imageLoad'
-import { FONT_PRESETS, drawTextSymbol, splitGlyphs } from '../engine/textSymbols'
+import {
+  FONT_PRESETS,
+  GLYPH_PACKS,
+  drawTextSymbol,
+  splitGlyphs,
+  type GlyphPack,
+} from '../engine/textSymbols'
 
 /* ------------------------------------------------------------------ */
 /* preview                                                             */
@@ -138,6 +144,16 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
 
   const sym = props.settings.symbols
   const parsedGlyphs = useMemo(() => splitGlyphs(glyphInput), [glyphInput])
+  const packPreviews = useMemo(
+    () =>
+      GLYPH_PACKS.map((pack) => ({
+        id: pack.id,
+        label: pack.label,
+        chars: splitGlyphs(pack.chars),
+        pack,
+      })),
+    [],
+  )
 
   const setEnabled = (next: Record<string, boolean>) => setParam('symbols.enabled', next)
   const toggle = (id: string) => setEnabled({ ...sym.enabled, [id]: !sym.enabled[id] })
@@ -166,6 +182,30 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
     setEnabled(next)
   }
 
+  /** Loads a vibe set: only its starter symbols on, plus the set's stroke weight. */
+  const applySet = (set: SymbolSet) => {
+    const next: Record<string, boolean> = { ...sym.enabled }
+    for (const id of allIds) next[id] = false
+    for (const id of set.starter) next[id] = true
+    setEnabled(next)
+    setParam('symbols.strokeWeight', set.strokeWeight)
+  }
+
+  /** Adds a whole group to the current selection without dropping anything. */
+  const addGroup = (ids: string[]) => {
+    const next: Record<string, boolean> = { ...sym.enabled }
+    for (const id of ids) next[id] = true
+    setEnabled(next)
+  }
+
+  /** Drops a whole group, keeping at least one symbol alive. */
+  const removeGroup = (ids: string[]) => {
+    const next: Record<string, boolean> = { ...sym.enabled }
+    for (const id of ids) next[id] = false
+    if (!allIds.some((id) => next[id])) next['dot'] = true
+    setEnabled(next)
+  }
+
   const handleFiles = async (files: FileList | null) => {
     if (!files) return
     for (const f of Array.from(files)) {
@@ -179,6 +219,15 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
     }
   }
 
+  const addPack = (pack: GlyphPack) => {
+    const n = addTextSymbols(pack.chars, pack.font, false)
+    setStatus(
+      n > 0
+        ? { kind: 'ready', message: `PACK ${pack.label} :: +${n} GLYPHS`, progress: -1 }
+        : { kind: 'error', message: 'PACK EMPTY', progress: -1 },
+    )
+  }
+
   const addGlyphs = () => {
     const n = addTextSymbols(glyphInput, glyphFontFamily, glyphBold)
     if (n > 0) {
@@ -189,16 +238,14 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
     }
   }
 
-  const groups: { name: string; ids: string[] }[] = [
-    { name: 'BASIC', ids: BUILTIN_SYMBOLS.filter((s) => s.category === 'basic').map((s) => s.id) },
-    {
-      name: 'DIRECTIONAL',
-      ids: BUILTIN_SYMBOLS.filter((s) => s.category === 'directional').map((s) => s.id),
-    },
-    {
-      name: 'GRAPHIC',
-      ids: BUILTIN_SYMBOLS.filter((s) => s.category === 'graphic').map((s) => s.id),
-    },
+  const byCategory = (c: string) =>
+    BUILTIN_SYMBOLS.filter((s) => s.category === c).map((s) => s.id)
+
+  const groups: { name: string; ids: string[]; hint?: string }[] = [
+    { name: 'BASIC', ids: byCategory('basic') },
+    { name: 'DIRECTIONAL', ids: byCategory('directional') },
+    { name: 'GRAPHIC', ids: byCategory('graphic') },
+    ...SYMBOL_SETS.map((set) => ({ name: set.label, ids: set.ids, hint: set.hint })),
   ]
 
   const customById = new Map(customSymbols.map((c) => [c.id, c]))
@@ -219,9 +266,47 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
         <span className="ml-auto text-fg3 text-xxs">{enabledIds.length} ON</span>
       </div>
 
+      <div className="flex items-center gap-2 px-1 pb-1">
+        <span className="text-fg3 text-xxs shrink-0">SET</span>
+        {SYMBOL_SETS.map((set) => (
+          <button
+            key={set.id}
+            type="button"
+            className="btn text-xxs"
+            title={set.hint + ' — load this set'}
+            onClick={() => applySet(set)}
+          >
+            {set.label}
+          </button>
+        ))}
+      </div>
+
       {groups.map((g) => (
         <div key={g.name}>
-          <GroupLabel text={g.name} />
+          <GroupLabel
+            text={g.name + (g.hint ? '  ' + g.hint : '')}
+            right={
+              <span className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  className="text-fg3 hover:text-fg text-xxs"
+                  title={'enable every symbol of ' + g.name}
+                  onClick={() => addGroup(g.ids)}
+                >
+                  ADD
+                </button>
+                <span className="text-fg3 text-xxs">/</span>
+                <button
+                  type="button"
+                  className="text-fg3 hover:text-fg text-xxs"
+                  title={'disable every symbol of ' + g.name}
+                  onClick={() => removeGroup(g.ids)}
+                >
+                  REMOVE
+                </button>
+              </span>
+            }
+          />
           <TileGrid>
             {g.ids.map((id) => (
               <Tile
@@ -274,6 +359,34 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
           </TileGrid>
         </div>
       )}
+
+      {/* ---------------- glyph packs ---------------- */}
+      <GroupLabel text="GLYPH PACKS" />
+      <div className="px-1 pb-1 space-y-[3px]">
+        {packPreviews.map((pack) => (
+          <button
+            key={pack.id}
+            type="button"
+            className="w-full flex items-center gap-1 border border-line hover:border-fg hover:bg-[#0d0d0d] px-1 py-[1px] text-left transition-colors"
+            title={'add ' + pack.label + ' :: ' + pack.chars.join(' ')}
+            onClick={() => addPack(pack.pack)}
+          >
+            <span className="text-fg2 text-xxs shrink-0" style={{ width: 58 }}>
+              {pack.label}
+            </span>
+            <span
+              className="text-fg text-sm2 flex-1 min-w-0 truncate leading-tight"
+              style={{ fontFamily: pack.pack.font }}
+            >
+              {pack.chars.join(' ')}
+            </span>
+            <span className="text-fg3 text-xxs shrink-0">+{pack.chars.length}</span>
+          </button>
+        ))}
+        <div className="text-fg3 text-xxs leading-snug">
+          CLICK A PACK TO ADD ITS GLYPHS AS SEPARATE SYMBOLS.
+        </div>
+      </div>
 
       {/* ---------------- unicode input ---------------- */}
       <GroupLabel text="ADD UNICODE" />

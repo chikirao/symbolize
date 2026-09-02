@@ -17,6 +17,29 @@ There is no test suite and no lint script. `npm run build` is the only gate — 
 zero TypeScript errors before a change is considered finished. Prefer it over `typecheck` alone
 right before wrapping up, since it also catches Vite/asset-resolution errors `typecheck` won't.
 
+## GitHub Pages deployment
+
+The production site is [https://chikirao.github.io/symbolize/](https://chikirao.github.io/symbolize/)
+and is deployed from the `main` branch by
+[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml). Every push to `main`
+starts the workflow automatically; it can also be run manually with `workflow_dispatch`.
+
+The workflow uses Node 20, runs `npm ci` and `npm run build`, uploads `dist/`, and deploys it with
+the official GitHub Pages actions. Do not commit generated `dist/` files or add a separate
+`gh-pages` branch unless the deployment strategy is deliberately being replaced.
+
+This is a project Pages site, so [`vite.config.ts`](vite.config.ts) must keep
+`base: '/symbolize/'`. Use base-aware or relative asset paths; root-absolute asset paths such as
+`/image.png` bypass the repository prefix and will break in production. If the GitHub repository
+is renamed, update the Vite base and the production URL in this file together.
+
+Before pushing a deploy-related change:
+
+1. Run `npm run build` and require a clean exit.
+2. Optionally run `npm run preview` and open `/symbolize/` to test the production build locally.
+3. After pushing to `main`, confirm that the **Deploy to GitHub Pages** workflow succeeds and that
+   the production URL loads without missing JS, CSS, or image assets.
+
 ## Hard constraints — do not violate
 
 * **No backend, no network calls, no third-party APIs.** Everything — image decode, rendering,
@@ -24,9 +47,11 @@ right before wrapping up, since it also catches Vite/asset-resolution errors `ty
   don't introduce a server component. This is a product requirement, not an oversight.
 * **User images never leave the browser.** They're read with `FileReader`/`<img>`/Clipboard API and
   drawn into `<canvas>`; nothing is uploaded anywhere. Keep it that way.
-* **No emoji/Unicode glyphs in the built-in symbol library.** The 42 built-in symbols
-  ([symbols.ts](src/engine/symbols.ts)) are Canvas drawing functions specifically because glyph
-  appearance depends on the viewer's system font. User-supplied Unicode symbols
+* **No emoji/Unicode glyphs in the built-in symbol library.** The 73 built-in symbols — the
+  neutral core in [symbols.ts](src/engine/symbols.ts) plus the SOFT / SHARP vibe sets in
+  [symbolSets.ts](src/engine/symbolSets.ts), sharing the helpers in
+  [symbolPrimitives.ts](src/engine/symbolPrimitives.ts) — are Canvas drawing functions
+  specifically because glyph appearance depends on the viewer's system font. User-supplied Unicode symbols
   ([textSymbols.ts](src/engine/textSymbols.ts)) are a separate, explicitly opt-in feature — don't
   conflate the two.
 * **Determinism.** All randomness in the render path (jitter, symbol choice, colour variation)
@@ -81,7 +106,16 @@ follow that pattern for any new setting instead of adding a bespoke store action
 * Respect `prefers-reduced-motion` in any new animation (scramble, glitch overlay, boot/intro wave)
   — every existing animation utility already checks it; match that.
 * Symbols are drawn via Canvas path functions (`paint: 'fill' | 'stroke'` per symbol in
-  symbols.ts), not CSS/SVG-in-DOM, to keep them inside the single canvas render.
+  symbols.ts / symbolSets.ts), not CSS/SVG-in-DOM, to keep them inside the single canvas render.
+  New symbols append to the end of the library so existing ids keep their pool order; a symbol
+  whose stroke needs non-round caps/joins must set and restore them itself (`drawElements` sets
+  `lineCap`/`lineJoin` to `round` once per frame) — see `withMiter` in symbolSets.ts.
+* A vibe set is a `SymbolSet` entry in `SYMBOL_SETS` (symbolSets.ts): its `ids` drive a group in
+  the ELEMENTS panel (with its own `ADD` / `REMOVE` header buttons), and `starter` +
+  `strokeWeight` are what the one-click `SET` button loads.
+* `GLYPH_PACKS` ([textSymbols.ts](src/engine/textSymbols.ts)) are curated Unicode sets added in
+  bulk through the existing `addTextSymbols` store action — they stay the opt-in glyph feature and
+  must never be merged into the vector library.
 * Sliders have a fixed character width (`BAR_CHARS` in
   [SliderControl.tsx](src/components/SliderControl.tsx)) — don't reintroduce per-element width
   measurement (`ResizeObserver`/`clientWidth`), that was a deliberate fix for jittery layout.

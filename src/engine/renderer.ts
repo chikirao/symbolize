@@ -105,6 +105,8 @@ export function resolvePool(
     const custom = customMap.get(id) || null
     const text = textMap.get(id) || null
     if (!builtin && !custom && !text) continue
+    // an id from an older preset whose symbol no longer exists must not take a slot
+    if (!builtin && !custom && !text) continue
     pool.push({ id, builtin, custom, text, weight })
   }
   if (pool.length === 0) {

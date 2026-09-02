@@ -3,70 +3,18 @@
  * the origin and fitting a size x size box, so the same code path works for a
  * 4 px preview cell and a 400 px export cell. No Unicode glyphs: the output must
  * not depend on the user's installed fonts.
+ *
+ * This file holds the neutral core set; the three vibe sets (SOFT / SHARP /
+ * Y2K) live in [symbolSets.ts](symbolSets.ts) and are concatenated in below.
  */
 
-export type SymbolCategory = 'basic' | 'directional' | 'graphic'
+import { arrowHead, polygonPath, roundRectPath, type SymbolDef } from './symbolPrimitives'
+import { SYMBOL_SETS, VIBE_SYMBOLS } from './symbolSets'
 
-export interface SymbolDef {
-  id: string
-  label: string
-  category: SymbolCategory
-  /** Which canvas style the routine uses, so the renderer only sets that one. */
-  paint: 'fill' | 'stroke'
-  draw: (ctx: CanvasRenderingContext2D, s: number, sw: number) => void
-}
+export type { SymbolCategory, SymbolDef } from './symbolPrimitives'
+export { SYMBOL_SETS, type SymbolSet } from './symbolSets'
 
-function roundRectPath(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  const rr = Math.min(r, w / 2, h / 2)
-  ctx.beginPath()
-  ctx.moveTo(x + rr, y)
-  ctx.lineTo(x + w - rr, y)
-  ctx.arcTo(x + w, y, x + w, y + rr, rr)
-  ctx.lineTo(x + w, y + h - rr)
-  ctx.arcTo(x + w, y + h, x + w - rr, y + h, rr)
-  ctx.lineTo(x + rr, y + h)
-  ctx.arcTo(x, y + h, x, y + h - rr, rr)
-  ctx.lineTo(x, y + rr)
-  ctx.arcTo(x, y, x + rr, y, rr)
-  ctx.closePath()
-}
-
-function polygonPath(ctx: CanvasRenderingContext2D, sides: number, r: number, rot: number) {
-  ctx.beginPath()
-  for (let i = 0; i < sides; i++) {
-    const a = rot + (i * Math.PI * 2) / sides
-    const x = Math.cos(a) * r
-    const y = Math.sin(a) * r
-    if (i === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
-  }
-  ctx.closePath()
-}
-
-function arrowHead(
-  ctx: CanvasRenderingContext2D,
-  tipX: number,
-  tipY: number,
-  ang: number,
-  len: number,
-) {
-  const a1 = ang + Math.PI * 0.78
-  const a2 = ang - Math.PI * 0.78
-  ctx.beginPath()
-  ctx.moveTo(tipX + Math.cos(a1) * len, tipY + Math.sin(a1) * len)
-  ctx.lineTo(tipX, tipY)
-  ctx.lineTo(tipX + Math.cos(a2) * len, tipY + Math.sin(a2) * len)
-  ctx.stroke()
-}
-
-export const BUILTIN_SYMBOLS: SymbolDef[] = [
+const CORE_SYMBOLS: SymbolDef[] = [
   {
     id: 'circle',
     label: 'CIRCLE',
@@ -730,8 +678,13 @@ export const BUILTIN_SYMBOLS: SymbolDef[] = [
   },
 ]
 
+export const BUILTIN_SYMBOLS: SymbolDef[] = [...CORE_SYMBOLS, ...VIBE_SYMBOLS]
+
 export const SYMBOL_MAP: Record<string, SymbolDef> = Object.fromEntries(
   BUILTIN_SYMBOLS.map((s) => [s.id, s]),
 )
 
 export const ALL_SYMBOL_IDS: string[] = BUILTIN_SYMBOLS.map((s) => s.id)
+
+/** Ids that belong to a vibe set, in set order — used for grouping in the UI. */
+export const SET_SYMBOL_IDS: string[] = SYMBOL_SETS.flatMap((s) => s.ids)
