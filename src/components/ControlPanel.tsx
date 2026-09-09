@@ -192,6 +192,26 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           decimals={3}
           disabled={settings.symbols.selectMode !== 'noise'}
         />
+        <ParamSlider
+          path="symbols.noisePhase"
+          label="NOISE PHASE"
+          min={0}
+          max={1}
+          step={0.001}
+          decimals={3}
+          disabled={settings.symbols.selectMode !== 'noise'}
+          hint="walks the noise field in a circle, so 0 and 1 look identical"
+        />
+        <ParamSlider
+          path="symbols.sequenceOffset"
+          label="SEQ OFFSET"
+          min={0}
+          max={64}
+          step={1}
+          decimals={0}
+          disabled={settings.symbols.selectMode !== 'sequential'}
+          hint="scrolls the pool along the diagonal"
+        />
         <div className="pl-3 text-xxs text-fg3 mt-1">
           POOL + WEIGHTS LIVE IN THE ELEMENTS PANEL ON THE LEFT.
         </div>
@@ -313,6 +333,17 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
             reverse={settings.color.reverse}
             onChange={(stops) => setParam('color.stops', stops)}
             onReverse={(v) => setParam('color.reverse', v)}
+          />
+        )}
+        {usesGradient && (
+          <ParamSlider
+            path="color.gradientOffset"
+            label="GRADIENT OFFSET"
+            min={-1}
+            max={1}
+            step={0.001}
+            decimals={3}
+            hint="rolls the ramp round; animate it for a travelling gradient"
           />
         )}
         <ParamSlider path="color.hueShift" label="HUE SHIFT" min={-180} max={180} step={1} decimals={0} suffix="d" />
@@ -448,6 +479,64 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         />
       </Section>
 
+      {/* ---------------- MOTION / REVEAL ---------------- */}
+      <Section id="motion" title="MOTION / REVEAL" open={isOpen('motion')} onToggle={toggle}>
+        <div className="hr text-xxs my-1 select-none">── REVEAL {'─'.repeat(40)}</div>
+        <ParamSelect
+          path="reveal.mode"
+          label="WIPE"
+          width={11}
+          options={[
+            { value: 'linear', label: 'LINEAR' },
+            { value: 'radial', label: 'RADIAL' },
+            { value: 'luminance', label: 'LUMINANCE' },
+            { value: 'noise', label: 'NOISE' },
+          ]}
+          hint="which way the frame fills in; animate AMOUNT for an intro"
+        />
+        <ParamSlider path="reveal.amount" label="AMOUNT" min={0} max={1} step={0.01} decimals={2} />
+        <ParamSlider path="reveal.softness" label="SOFTNESS" min={0} max={1} step={0.01} decimals={2} />
+        <ParamSlider
+          path="reveal.angle"
+          label="ANGLE"
+          min={-180}
+          max={180}
+          step={1}
+          decimals={0}
+          suffix="d"
+          disabled={settings.reveal.mode !== 'linear'}
+        />
+        <ParamToggle path="reveal.invert" label="INVERT WIPE" />
+
+        <div className="hr text-xxs my-1 select-none">── MOTION {'─'.repeat(40)}</div>
+        <ParamSelect
+          path="motion.mode"
+          label="FIELD"
+          width={9}
+          options={[
+            { value: 'wave', label: 'WAVE' },
+            { value: 'radial', label: 'RADIAL' },
+            { value: 'noise', label: 'NOISE' },
+          ]}
+        />
+        <ParamSlider path="motion.amplitudeX" label="AMPLITUDE X" min={0} max={200} step={0.5} decimals={1} suffix="px" />
+        <ParamSlider path="motion.amplitudeY" label="AMPLITUDE Y" min={0} max={200} step={0.5} decimals={1} suffix="px" />
+        <ParamSlider path="motion.frequency" label="FREQUENCY" min={0.05} max={8} step={0.05} decimals={2} />
+        <ParamSlider
+          path="motion.phase"
+          label="PHASE"
+          min={0}
+          max={1}
+          step={0.001}
+          decimals={3}
+          hint="one full cycle: key 0 -> 1 for a seamless loop"
+        />
+        <ParamSlider path="motion.swirl" label="SWIRL" min={-2} max={2} step={0.01} decimals={2} />
+        <div className="pl-3 text-xxs text-fg3 mt-1 leading-snug">
+          MOTION MOVES SYMBOLS, NOT THE SOURCE :: EACH CELL STILL SAMPLES WHERE IT SITS.
+        </div>
+      </Section>
+
       {/* ---------------- RANDOM / DENSITY ---------------- */}
       <Section id="random" title="RANDOM / DENSITY" open={isOpen('random')} onToggle={toggle}>
         <SeedControl />
@@ -461,6 +550,15 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
             { value: 'dark', label: 'DARK+' },
             { value: 'light', label: 'LIGHT+' },
           ]}
+        />
+        <ParamSlider
+          path="density.softness"
+          label="DENSITY SOFTNESS"
+          min={0}
+          max={1}
+          step={0.01}
+          decimals={2}
+          hint="fades cells in around the cutoff instead of popping them on"
         />
         <div className="pl-3 text-xxs text-fg3 mt-1 leading-snug">
           SAME SEED + SAME SETTINGS = SAME IMAGE.

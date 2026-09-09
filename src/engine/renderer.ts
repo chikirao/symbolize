@@ -205,6 +205,30 @@ export function calculateElements(
   const wantDominant = settings.color.mode === 'source-dominant'
   const poolLen = pool.length
   const noiseScale = Math.max(0.0005, settings.symbols.noiseScale)
+  const rv = settings.reveal
+  const mo = settings.motion
+  const densitySoft = settings.density.softness
+
+  // A reveal at full amount is the resting state, and skipping it there keeps
+  // every still image on exactly the path it was on before reveal existed.
+  const revealOn = rv.amount < 0.999 || rv.invert
+  const revealSoft = Math.max(0.004, rv.softness * 0.5)
+  const revealEdge = lerp(-revealSoft, 1 + revealSoft, clamp01(rv.amount))
+  const revealAngle = (rv.angle * Math.PI) / 180
+  const revealCos = Math.cos(revealAngle)
+  const revealSin = Math.sin(revealAngle)
+
+  const motionOn = mo.amplitudeX !== 0 || mo.amplitudeY !== 0 || mo.swirl !== 0
+  const motionPhase = mo.phase * Math.PI * 2
+  const motionFreq = Math.max(0.01, mo.frequency)
+
+  // Temporal noise walks a circle in the noise field instead of a line, so
+  // phase 0 and phase 1 read the same values and a loop does not jump.
+  const noiseAngle = settings.symbols.noisePhase * Math.PI * 2
+  const noisePhaseX = Math.cos(noiseAngle) * 6
+  const noisePhaseY = Math.sin(noiseAngle) * 6
+  const sequenceOffset = Math.round(settings.symbols.sequenceOffset)
+  const gradientOffset = settings.color.gradientOffset
 
   let n = 0
 
@@ -272,12 +296,54 @@ export function calculateElements(
       edgeF = clamp01((e - ed.threshold) / Math.max(0.001, 1 - ed.threshold))
     }
 
+    // ---- reveal -----------------------------------------------------
+    // An independent wipe, after the mask and before density: it decides how
+    // much of the frame exists at all, which is what an intro or an outro
+    // actually is.
+    let revealF = 1
+    if (revealOn) {
+      let t: number
+      switch (rv.mode) {
+        case 'radial': {
+          const dx = cell.x - cxCentre
+          const dy = cell.y - cyCentre
+          t = Math.sqrt(dx * dx + dy * dy) / maxRadius
+          break
+        }
+        case 'luminance':
+          t = v
+          break
+        case 'noise':
+          t = valueNoise(seed ^ 0x51ed, cell.x * 0.012, cell.y * 0.012)
+          break
+        default: {
+          const nx = imgW > 0 ? cell.x / imgW - 0.5 : 0
+          const ny = imgH > 0 ? cell.y / imgH - 0.5 : 0
+          t = clamp01(0.5 + nx * revealCos + ny * revealSin)
+        }
+      }
+      revealF = 1 - smoothstep(revealEdge - revealSoft, revealEdge + revealSoft, clamp01(t))
+      if (rv.invert) revealF = 1 - revealF
+      if (revealF <= 0.002) continue
+    }
+
     // ---- density ----------------------------------------------------
     let p = density
     if (settings.density.mode === 'dark') p *= 1 - v
     else if (settings.density.mode === 'light') p *= v
     if (edgeMap && ed.mode !== 'inside') p *= 1 + edgeF * ed.boost
-    if (p < 1 && rDensity > p) continue
+    let densityF = 1
+    if (p < 1) {
+      if (densitySoft <= 0.001) {
+        if (rDensity > p) continue
+      } else {
+        // the same stable per-cell number, read as a distance from the cutoff
+        // instead of a yes/no, so cells fade in rather than pop
+        const half = densitySoft * 0.5
+        densityF = 1 - smoothstep(p - half, p + half, rDensity)
+        if (densityF <= 0.004) continue
+      }
+    }
 
     // ---- symbol -----------------------------------------------------
     let symIndex = 0
@@ -288,11 +354,16 @@ export function calculateElements(
           break
         }
         case 'sequential': {
-          symIndex = ((cell.col + cell.row) % poolLen + poolLen) % poolLen
+          const step = cell.col + cell.row + sequenceOffset
+          symIndex = ((step % poolLen) + poolLen) % poolLen
           break
         }
         case 'noise': {
-          const nz = valueNoise(seed ^ 0x2f1b, cell.x * noiseScale, cell.y * noiseScale)
+          const nz = valueNoise(
+            seed ^ 0x2f1b,
+            cell.x * noiseScale + noisePhaseX,
+            cell.y * noiseScale + noisePhaseY,
+          )
           symIndex = pickWeighted(pool, clamp01(nz))
           break
         }
@@ -311,6 +382,8 @@ export function calculateElements(
     if (th.soft > 0.0005) size *= lerp(0.45, 1, thF)
     if (mk.enabled && mk.feather > 0.0005) size *= lerp(0.45, 1, maskF)
     if (edgeMap && ed.mode !== 'inside') size *= 1 + edgeF * ed.boost * 0.5
+    if (revealF < 0.999) size *= lerp(0.35, 1, revealF)
+    if (densityF < 0.999) size *= lerp(0.25, 1, densityF)
     if (sz.clamp) size = Math.min(size, Math.min(cell.cw, cell.ch) * 1.25)
     if (size <= 0.05) continue
 
@@ -347,6 +420,7 @@ export function calculateElements(
     if (op.jitter > 0) alpha *= 1 + (rOpacity - 0.5) * 2 * op.jitter
     alpha *= thF
     if (mk.enabled) alpha *= maskF
+    alpha *= revealF * densityF
     alpha = clamp01(alpha)
     if (alpha <= 0.004) continue
 
@@ -382,7 +456,11 @@ export function calculateElements(
           const dy = cell.y - cyCentre
           t = Math.sqrt(dx * dx + dy * dy) / maxRadius
         } else t = v
-        const li = Math.max(0, Math.min(LUT_SIZE - 1, Math.round(clamp01(t) * (LUT_SIZE - 1)))) * 3
+        // gradientOffset rolls the LUT round, which is what turns a static
+        // ramp into a travelling one; a non-cyclic gradient shows a seam.
+        let slot = Math.round(clamp01(t) * (LUT_SIZE - 1) + gradientOffset * LUT_SIZE)
+        slot = ((slot % LUT_SIZE) + LUT_SIZE) % LUT_SIZE
+        const li = slot * 3
         cr = lut[li]
         cg = lut[li + 1]
         cb = lut[li + 2]
@@ -395,8 +473,52 @@ export function calculateElements(
       cb += (rColB - 0.5) * 2 * j
     }
 
-    buf.x[n] = cell.x
-    buf.y[n] = cell.y
+    // ---- motion -----------------------------------------------------
+    // Applied to the output position only: the cell keeps sampling the source
+    // where it sits, so the picture stays put while the symbols travel.
+    let px = cell.x
+    let py = cell.y
+    if (motionOn) {
+      if (mo.swirl !== 0) {
+        const dx = px - cxCentre
+        const dy = py - cyCentre
+        const radius = Math.sqrt(dx * dx + dy * dy)
+        const theta = mo.swirl * (1 - Math.min(1, radius / maxRadius)) * Math.PI
+        const ca = Math.cos(theta)
+        const sa = Math.sin(theta)
+        px = cxCentre + dx * ca - dy * sa
+        py = cyCentre + dx * sa + dy * ca
+      }
+      switch (mo.mode) {
+        case 'radial': {
+          const dx = px - cxCentre
+          const dy = py - cyCentre
+          const radius = Math.sqrt(dx * dx + dy * dy) || 1
+          const wave = Math.sin((radius / maxRadius) * motionFreq * Math.PI * 2 - motionPhase)
+          px += (dx / radius) * mo.amplitudeX * wave
+          py += (dy / radius) * mo.amplitudeY * wave
+          break
+        }
+        case 'noise': {
+          const tx = Math.cos(motionPhase) * 5
+          const ty = Math.sin(motionPhase) * 5
+          const sx = cell.x * 0.004 * motionFreq
+          const sy = cell.y * 0.004 * motionFreq
+          px += (valueNoise(seed ^ 0x6b17, sx + tx, sy + ty) - 0.5) * 2 * mo.amplitudeX
+          py += (valueNoise(seed ^ 0x1d4c, sx + tx + 37, sy + ty + 11) - 0.5) * 2 * mo.amplitudeY
+          break
+        }
+        default: {
+          const nx = imgW > 0 ? cell.x / imgW : 0
+          const ny = imgH > 0 ? cell.y / imgH : 0
+          px += mo.amplitudeX * Math.sin(ny * motionFreq * Math.PI * 2 + motionPhase)
+          py += mo.amplitudeY * Math.cos(nx * motionFreq * Math.PI * 2 + motionPhase)
+        }
+      }
+    }
+
+    buf.x[n] = px
+    buf.y[n] = py
     buf.size[n] = size
     buf.rot[n] = (rot * Math.PI) / 180
     buf.a[n] = alpha

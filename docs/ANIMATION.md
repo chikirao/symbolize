@@ -82,11 +82,11 @@ Key decisions:
 - [x] `ExportPanel` — ANIMATION section (format, size, fps, range, estimate, cancel)
 
 ### S6 — new animatable parameters
-- [ ] `color.gradientOffset` — rotate the gradient LUT
-- [ ] `symbols.noisePhase` — loop-safe temporal noise for symbol choice
-- [ ] `density.softness` — fade cells in instead of popping them
-- [ ] `reveal.*` — independent reveal stage (x / y / radial / luminance / noise)
-- [ ] `motion.*` — post-sampling wave/radial/noise displacement + rotation cycles
+- [x] `color.gradientOffset` — rotate the gradient LUT
+- [x] `symbols.noisePhase` — loop-safe temporal noise for symbol choice
+- [x] `density.softness` — fade cells in instead of popping them
+- [x] `reveal.*` — independent reveal stage (x / y / radial / luminance / noise)
+- [x] `motion.*` — post-sampling wave/radial/noise displacement + rotation cycles
 
 ### S7 — polish
 - [ ] mobile `ANIM` dock section
