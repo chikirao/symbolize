@@ -74,12 +74,12 @@ Key decisions:
 - [x] track rows in the timeline with per-frame markers, click to scrub, drag to move keys
 
 ### S5 — export
-- [ ] `src/engine/encode/gif.ts` — palette quantisation + Floyd–Steinberg + LZW, zero deps
-- [ ] `src/engine/encode/apng.ts` — reuse the browser PNG encoder, re-chunk into APNG
-- [ ] `src/engine/encode/zip.ts` — stored (uncompressed) ZIP of a PNG sequence
-- [ ] `src/engine/encode/webm.ts` — `VideoEncoder` + minimal EBML muxer, when WebCodecs exists
-- [ ] `src/engine/animExport.ts` — offline frame loop, progress, cancel, budget guard
-- [ ] `ExportPanel` — ANIMATION section (format, size, fps, range, estimate, cancel)
+- [x] `src/engine/encode/gif.ts` — palette quantisation + Floyd–Steinberg + LZW, zero deps
+- [x] `src/engine/encode/apng.ts` — reuse the browser PNG encoder, re-chunk into APNG
+- [x] `src/engine/encode/zip.ts` — stored (uncompressed) ZIP of a PNG sequence
+- [x] `src/engine/encode/webm.ts` — `VideoEncoder` + minimal EBML muxer, when WebCodecs exists
+- [x] `src/engine/animExport.ts` — offline frame loop, progress, cancel, budget guard
+- [x] `ExportPanel` — ANIMATION section (format, size, fps, range, estimate, cancel)
 
 ### S6 — new animatable parameters
 - [ ] `color.gradientOffset` — rotate the gradient LUT

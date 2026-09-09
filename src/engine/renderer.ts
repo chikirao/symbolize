@@ -771,20 +771,34 @@ export function renderComposite(req: RenderRequest): RenderStats {
 }
 
 /**
- * Yields to the browser between chunks. rAF keeps the UI smooth while the tab
- * is visible; the timeout makes sure a background tab still finishes its export
- * instead of stalling on a paused animation frame.
+ * Yields to the browser between chunks.
+ *
+ * While the tab is visible, rAF is the right beat — it lines the chunks up with
+ * the compositor and keeps the UI smooth. Once the tab is hidden rAF stops and
+ * `setTimeout` is clamped to about a second, which would turn a long export
+ * into a multi-minute wait for nothing; a MessageChannel task is neither
+ * paused nor clamped, so a backgrounded export runs at full speed.
  */
 const nextFrame = () =>
   new Promise<void>((resolve) => {
-    let done = false
-    const finish = () => {
-      if (done) return
-      done = true
+    const visible = typeof document !== 'undefined' && !document.hidden
+    if (visible && typeof requestAnimationFrame === 'function') {
+      let done = false
+      const finish = () => {
+        if (done) return
+        done = true
+        resolve()
+      }
+      requestAnimationFrame(finish)
+      setTimeout(finish, 24)
+      return
+    }
+    const channel = new MessageChannel()
+    channel.port1.onmessage = () => {
+      channel.port1.close()
       resolve()
     }
-    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(finish)
-    setTimeout(finish, 24)
+    channel.port2.postMessage(0)
   })
 
 /** Chunked render — used for large exports so the UI keeps responding. */

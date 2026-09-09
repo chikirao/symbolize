@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
+import { AnimExportPanel } from './AnimExportPanel'
 import {
   buildFilename,
   canCopyToClipboard,
@@ -13,9 +14,11 @@ import { AsciiMeter } from './SliderControl'
 import { NumberField, Row, Scramble, SelectControl, Toggle } from './Primitives'
 
 type ScaleMode = '1' | '2' | '4' | 'custom'
+type OutputMode = 'still' | 'anim'
 
 export function ExportPanel() {
   const image = useEditor((s) => s.image)
+  const sequence = useEditor((s) => s.sequence)
   const maps = useEditor((s) => s.maps)
   const settings = useEditor((s) => s.settings)
   const customSymbols = useEditor((s) => s.customSymbols)
@@ -32,6 +35,17 @@ export function ExportPanel() {
   const [progress, setProgress] = useState(0)
   const [done, setDone] = useState<string | null>(null)
   const [doneToken, setDoneToken] = useState(0)
+  const [mode, setMode] = useState<OutputMode>('still')
+
+  // dropping a video in is a clear statement of intent about the output
+  const lastSequence = useRef(sequence?.id ?? 0)
+  useEffect(() => {
+    const id = sequence?.id ?? 0
+    if (id !== lastSequence.current) {
+      lastSequence.current = id
+      if (id !== 0) setMode('anim')
+    }
+  }, [sequence])
 
   const baseW = image?.width ?? 0
   const baseH = image?.height ?? 0
@@ -52,7 +66,7 @@ export function ExportPanel() {
   const [clampedW, clampedH] = clampExportSize(targetW || 1, targetH || 1)
   const clamped = clampedW !== Math.round(targetW) || clampedH !== Math.round(targetH)
 
-  const run = async (mode: 'download' | 'clipboard') => {
+  const run = async (target: 'download' | 'clipboard') => {
     if (!maps || !image || busy) return
     setBusy(true)
     setDone(null)
@@ -80,7 +94,7 @@ export function ExportPanel() {
           })
         },
       )
-      if (mode === 'clipboard') {
+      if (target === 'clipboard') {
         await copyBlobToClipboard(res.blob)
         setDone('COPIED TO CLIPBOARD')
       } else {
@@ -111,8 +125,33 @@ export function ExportPanel() {
     }
   }
 
+  const modeRow = (
+    <Row label="OUTPUT">
+      <SelectControl
+        value={mode}
+        width={11}
+        ariaLabel="export output"
+        options={[
+          { value: 'still', label: 'STILL IMAGE' },
+          { value: 'anim', label: 'ANIMATION' },
+        ]}
+        onChange={(v) => setMode(v as OutputMode)}
+      />
+    </Row>
+  )
+
+  if (mode === 'anim') {
+    return (
+      <div className="pl-1">
+        {modeRow}
+        <AnimExportPanel />
+      </div>
+    )
+  }
+
   return (
     <div className="pl-1">
+      {modeRow}
       <Row label="FORMAT">
         <SelectControl
           value={format}
