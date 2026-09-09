@@ -3,7 +3,15 @@ import { useAnim } from '../store/animStore'
 import { useEditor } from '../store/editorStore'
 import type { AnimationTrack, Easing, KeyValue, LoopMode } from '../types/anim'
 import { MAX_FRAMES, MIN_FRAMES } from '../types/anim'
-import { EASINGS, baseValueFor, keyAtFrame, trackValueAt } from '../engine/animation'
+import {
+  EASINGS,
+  baseValueFor,
+  keyAtFrame,
+  parseProject,
+  serializeProject,
+  trackValueAt,
+} from '../engine/animation'
+import { downloadBlob } from '../engine/export'
 import { animatableFor, animatableGroups } from '../engine/animatable'
 import { AsciiBox, NumberField, SelectControl, Toggle, format } from './Primitives'
 
@@ -13,14 +21,15 @@ import { AsciiBox, NumberField, SelectControl, Toggle, format } from './Primitiv
  * Strips are a fixed number of characters, like every other meter in the app —
  * measuring them per row was what made the sliders jitter, and the same applies
  * here. The playhead is drawn by slicing the string in three, which is exact in
- * a monospace column.
+ * a monospace column. Mobile gets a shorter strip rather than a measured one.
  */
 const STRIP_CHARS = 72
+const STRIP_CHARS_COMPACT = 34
 
-function charForFrame(frame: number, duration: number): number {
+function charForFrame(frame: number, duration: number, chars: number): number {
   if (duration <= 1) return 0
   const t = frame / (duration - 1)
-  return Math.max(0, Math.min(STRIP_CHARS - 1, Math.round(t * (STRIP_CHARS - 1))))
+  return Math.max(0, Math.min(chars - 1, Math.round(t * (chars - 1))))
 }
 
 function frameForRatio(t: number, duration: number): number {
@@ -28,16 +37,21 @@ function frameForRatio(t: number, duration: number): number {
 }
 
 /** The ruler is fixed geometry: eighths of the timeline, whatever its length. */
-const RULER_CELLS = Array.from({ length: STRIP_CHARS }, (_, i) =>
-  i === 0 || i === STRIP_CHARS - 1 || i % Math.round(STRIP_CHARS / 8) === 0 ? '┬' : '─',
-).join('')
+function rulerCells(chars: number): string {
+  const tick = Math.max(2, Math.round(chars / 8))
+  return Array.from({ length: chars }, (_, i) =>
+    i === 0 || i === chars - 1 || i % tick === 0 ? '┬' : '─',
+  ).join('')
+}
 
-function trackCells(track: AnimationTrack, duration: number): string {
-  const cells = new Array(STRIP_CHARS).fill('·')
-  const first = charForFrame(track.keys[0]?.frame ?? 0, duration)
-  const last = charForFrame(track.keys[track.keys.length - 1]?.frame ?? 0, duration)
+function trackCells(track: AnimationTrack, duration: number, chars: number): string {
+  const cells = new Array(chars).fill('·')
+  const first = charForFrame(track.keys[0]?.frame ?? 0, duration, chars)
+  const last = charForFrame(track.keys[track.keys.length - 1]?.frame ?? 0, duration, chars)
   for (let i = first; i <= last; i++) cells[i] = '─'
-  for (const key of track.keys) cells[charForFrame(key.frame, duration)] = key.easing === 'hold' ? '#' : '*'
+  for (const key of track.keys) {
+    cells[charForFrame(key.frame, duration, chars)] = key.easing === 'hold' ? '#' : '*'
+  }
   return cells.join('')
 }
 
@@ -113,8 +127,8 @@ function Strip(props: {
 
 /* ------------------------------------------------------------------ */
 
-function TrackRow(props: { track: AnimationTrack }) {
-  const { track } = props
+function TrackRow(props: { track: AnimationTrack; chars: number }) {
+  const { track, chars } = props
   const project = useAnim((s) => s.project)
   const frame = useAnim((s) => s.frame)
   const selected = useAnim((s) => s.selected)
@@ -130,13 +144,13 @@ function TrackRow(props: { track: AnimationTrack }) {
 
   const meta = animatableFor(track.path)
   const duration = project.durationFrames
-  const cells = useMemo(() => trackCells(track, duration), [track, duration])
+  const cells = useMemo(() => trackCells(track, duration, chars), [track, duration, chars])
   const here = keyAtFrame(track, frame)
   const value = trackValueAt(track, frame)
 
   /** the key a pointer press grabbed, so a drag moves it instead of scrubbing */
   const grabbed = useRef<number | null>(null)
-  const grabTolerance = Math.max(1, Math.round(duration / STRIP_CHARS))
+  const grabTolerance = Math.max(1, Math.round(duration / chars))
 
   const label = meta?.label ?? track.path
   const readout =
@@ -169,7 +183,7 @@ function TrackRow(props: { track: AnimationTrack }) {
       <Strip
         ariaLabel={label + ' keyframes'}
         cells={cells}
-        head={charForFrame(frame, duration)}
+        head={charForFrame(frame, duration, chars)}
         onScrub={(r) => setFrame(frameForRatio(r, duration))}
         onGrab={(r) => {
           const at = frameForRatio(r, duration)
@@ -287,7 +301,7 @@ function AddTrack() {
 
 /* ------------------------------------------------------------------ */
 
-export function Timeline(props: { className?: string }) {
+export function Timeline(props: { className?: string; compact?: boolean }) {
   const project = useAnim((s) => s.project)
   const frame = useAnim((s) => s.frame)
   const playing = useAnim((s) => s.playing)
@@ -306,18 +320,53 @@ export function Timeline(props: { className?: string }) {
   const clearTracks = useAnim((s) => s.clearTracks)
   const sequence = useEditor((s) => s.sequence)
 
+  const setProject = useAnim((s) => s.setProject)
+  const loadRef = useRef<HTMLInputElement>(null)
+
   const duration = project.durationFrames
   const seconds = (duration / project.fps).toFixed(1)
+  const chars = props.compact ? STRIP_CHARS_COMPACT : STRIP_CHARS
+  const ruler = useMemo(() => rulerCells(chars), [chars])
+
+  // On mobile the ANIM sheet is itself the disclosure, so the body is always
+  // open there and the [+]/[-] title toggle would be a second, confusing one.
+  const expanded = props.compact || open
 
   const pad = (n: number) => String(n).padStart(3, '0')
+
+  const saveProject = () => {
+    const blob = new Blob([serializeProject(project)], { type: 'application/json' })
+    downloadBlob(blob, 'symbolize-animation.json')
+  }
+
+  const loadProject = async (file: File | undefined | null) => {
+    if (!file) return
+    try {
+      setProject(parseProject(await file.text()))
+      useEditor.getState().setStatus({
+        kind: 'ready',
+        message: 'ANIMATION LOADED :: ' + file.name.toUpperCase(),
+        progress: -1,
+      })
+    } catch (err) {
+      useEditor.getState().setStatus({
+        kind: 'error',
+        message: 'ANIMATION LOAD FAILED :: ' + String((err as Error).message || err),
+        progress: -1,
+      })
+    }
+  }
 
   return (
     <AsciiBox
       className={'timeline ' + (props.className || '')}
       title={
-        <button type="button" className="tl-title" onClick={toggleOpen} aria-expanded={open}>
-          {open ? '[-]' : '[+]'} TIMELINE
-        </button>
+        // the mobile sheet already has a TIMELINE header; a second one is noise
+        props.compact ? undefined : (
+          <button type="button" className="tl-title" onClick={toggleOpen} aria-expanded={open}>
+            {open ? '[-]' : '[+]'} TIMELINE
+          </button>
+        )
       }
       right={
         <span>
@@ -398,14 +447,14 @@ export function Timeline(props: { className?: string }) {
         </span>
       </div>
 
-      {open && (
+      {expanded && (
         <>
           <div className="tl-ruler">
             <span className="tl-track-name text-xxs text-fg3">FRAME</span>
             <Strip
               ariaLabel="playhead"
-              cells={RULER_CELLS}
-              head={charForFrame(frame, duration)}
+              cells={ruler}
+              head={charForFrame(frame, duration, chars)}
               headChar="█"
               onScrub={(r) => setFrame(frameForRatio(r, duration))}
             />
@@ -419,12 +468,29 @@ export function Timeline(props: { className?: string }) {
               </div>
             )}
             {project.tracks.map((track) => (
-              <TrackRow key={track.path} track={track} />
+              <TrackRow key={track.path} track={track} chars={chars} />
             ))}
           </div>
 
           <div className="tl-footer">
             <AddTrack />
+            <button
+              type="button"
+              className="btn text-xxs"
+              disabled={project.tracks.length === 0}
+              title="save the timeline as JSON"
+              onClick={saveProject}
+            >
+              SAVE ANIM
+            </button>
+            <button
+              type="button"
+              className="btn text-xxs"
+              title="load a timeline JSON"
+              onClick={() => loadRef.current?.click()}
+            >
+              LOAD ANIM
+            </button>
             <button
               type="button"
               className="btn text-xxs btn-danger"
@@ -433,6 +499,16 @@ export function Timeline(props: { className?: string }) {
             >
               ! CLEAR TRACKS
             </button>
+            <input
+              ref={loadRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                void loadProject(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
           </div>
         </>
       )}

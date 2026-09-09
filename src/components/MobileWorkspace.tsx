@@ -8,14 +8,16 @@ import { PresetPanel } from './PresetPanel'
 import { SourcePanel } from './SourcePanel'
 import { StatusBar } from './StatusBar'
 import { SymbolLibrary } from './SymbolLibrary'
+import { Timeline } from './Timeline'
 
-type MobilePanelId = 'image' | 'symbols' | 'presets' | 'params' | 'export'
+type MobilePanelId = 'image' | 'symbols' | 'presets' | 'params' | 'anim' | 'export'
 
 const PANELS: { id: MobilePanelId; label: string; title: string }[] = [
   { id: 'image', label: 'IMAGE', title: 'IMAGE / SOURCE' },
   { id: 'symbols', label: 'SYMBOLS', title: 'SYMBOLS' },
   { id: 'presets', label: 'PRESETS', title: 'PRESETS' },
   { id: 'params', label: 'PARAMS', title: 'PARAMETERS' },
+  { id: 'anim', label: 'ANIM', title: 'TIMELINE' },
   { id: 'export', label: 'EXPORT', title: 'EXPORT' },
 ]
 
@@ -85,6 +87,7 @@ export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => 
                   <ControlPanel includeExport={false} singleOpen />
                 </AsciiBox>
               )}
+              {active === 'anim' && <Timeline compact className="mobile-panel-box" />}
               {active === 'export' && (
                 <AsciiBox title="EXPORT" className="mobile-panel-box" bodyClassName="p-2 pt-1">
                   <ExportPanel />

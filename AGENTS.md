@@ -65,6 +65,12 @@ Before pushing a deploy-related change:
   `Uint8ClampedArray` rgb maps capped at 1800px on the long side. Every per-cell sample
   ([sampling.ts](src/engine/sampling.ts)) reads from those typed arrays — never call
   `getImageData`/`getPixel` per element. This is the single biggest perf invariant in the codebase.
+  An animated source adds a per-frame axis to this and nothing else: `engine/sequence.ts` builds
+  one `SourceMaps` per decoded frame, behind an LRU, and hands the render path a cached pair.
+* **No runtime dependencies for encoding or decoding.** The GIF/APNG/WebM/ZIP writers and the GIF
+  reader in `engine/encode/` and `engine/gifDecode.ts` are hand-written against platform APIs
+  (`CompressionStream`, WebCodecs). Do not add gif.js, mp4box, or a muxer package — the no-network,
+  no-third-party rule covers build-time dependencies that ship to the browser too.
 
 ## Architecture
 
@@ -74,10 +80,12 @@ later without touching components.
 
 ```
 src/
-  components/     UI: toolbar, canvas viewport, side panels, ASCII primitives
+  components/     UI: toolbar, canvas viewport, side panels, timeline, ASCII primitives
   engine/         pure TS render pipeline (see below)
-  store/          Zustand store (editorStore.ts) + dotted-path get/set helpers (path.ts)
+    encode/       GIF / APNG / WebM / ZIP writers, no dependencies
+  store/          Zustand stores (editorStore.ts, animStore.ts) + dotted-path helpers (path.ts)
   types/editor.ts EditorSettings — the one interface that shapes the whole UI + engine
+  types/anim.ts   AnimationProject — tracks, keyframes, transport
   ui/             text-scramble + boot/intro animation utilities (also React-free)
 ```
 
@@ -90,6 +98,36 @@ into a structure-of-arrays buffer — `x/y/size/rot/a/r/g/b/sym`, not one object
 The grid is built **in source-image coordinates**; output resolution is applied only via
 `ctx.setTransform`. This is why preview and export are guaranteed to be the same composition at
 different scale — never bake a resolution-dependent value into grid/cell math.
+
+### Animation
+
+Animation is a layer *on top of* the still pipeline, not a fork of it.
+
+```
+BASE SETTINGS  +  TRACKS @ FRAME  ->  EVALUATED SETTINGS
+SOURCE MEDIA   @  FRAME           ->  SOURCE MAPS (cached)   -> the usual pipeline
+```
+
+* [types/anim.ts](src/types/anim.ts) holds `AnimationProject` / `AnimationTrack` / `Keyframe`;
+  [store/animStore.ts](src/store/animStore.ts) owns the timeline. Tracks are **never** written back
+  into `EditorSettings` — `evaluateFrame()` ([engine/animation.ts](src/engine/animation.ts))
+  derives a settings object per frame using `setPath`, which shares untouched branches.
+* Playback must not write to the editor store. The playhead lives in `animStore`; `CanvasViewport`
+  pulls the frame's canvas + maps straight from `engine/sequence.ts`. Putting per-frame state in
+  `editorStore` would re-render every panel 24 times a second.
+* Only paths in the registry ([engine/animatable.ts](src/engine/animatable.ts)) are animatable. It
+  carries kind (number / angle / color / step), range and render cost. Add the parameter there when
+  you add it to `EditorSettings`, or the timeline will not offer it.
+* Time is **integer frames**. Don't reintroduce float seconds: the same project must evaluate the
+  same frame every time, including in export.
+* Preview drops frames deliberately (`TransportClock` targets `floor(elapsed * fps)`); the offline
+  export in [engine/animExport.ts](src/engine/animExport.ts) never does.
+* `renderCompositeAsync` yields through a `MessageChannel` when the tab is hidden. `setTimeout` is
+  clamped to ~1s in a background tab, which used to make a backgrounded export twenty times slower;
+  keep that branch.
+* New animation parameters must be **neutral at their defaults** so existing presets are unchanged,
+  and must not consume new values from the per-cell PRNG — the draw order in `calculateElements` is
+  an invariant (see Determinism above).
 
 `EditorSettings` ([types/editor.ts](src/types/editor.ts)) is the single source of truth for every
 tunable parameter. UI controls read/write it through dotted string paths (`setParam('grid.cellSize',
@@ -132,3 +170,7 @@ follow that pattern for any new setting instead of adding a bespoke store action
    slider changes. There's no automated visual test, so this is the only check.
 3. If you touched the seeded-random path, verify same-seed-same-output still holds (flip
    `RANDOMIZE SEED` and back, or compare two renders with an unchanged seed).
+4. If you touched an encoder or a decoder, round-trip it in the browser rather than trusting the
+   spec: encode a few frames, read them back with our own reader *and* with the platform
+   (`<img>` for GIF/APNG, `<video>` for WebM), and compare pixels. There is no test suite, and a
+   container that is subtly wrong still produces a file.

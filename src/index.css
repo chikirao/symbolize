@@ -636,6 +636,32 @@
   }
 }
 
+/* The compact timeline drops the value readout and narrows the name column:
+   a phone has no room for a 72-character strip plus five other columns. */
+@media (max-width: 899px), (pointer: coarse) and (max-width: 1199px) {
+  .timeline .tl-track {
+    grid-template-columns: 72px 30px minmax(0, 1fr) auto;
+  }
+  .timeline .tl-ruler {
+    grid-template-columns: 72px minmax(0, 1fr) 34px;
+  }
+  .timeline .tl-value {
+    display: none;
+  }
+  .timeline .tl-ruler .tl-value {
+    display: block;
+  }
+  .timeline .tl-track-detail {
+    padding-left: 72px;
+  }
+  .timeline .tl-tracks {
+    max-height: 40vh;
+  }
+  .timeline .tl-add-menu {
+    width: min(92vw, 520px);
+  }
+}
+
 @keyframes blink {
   0%,
   50% {
@@ -896,7 +922,7 @@
 
   .mobile-dock {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     width: 100%;
     min-height: calc(58px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);

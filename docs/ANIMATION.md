@@ -89,10 +89,10 @@ Key decisions:
 - [x] `motion.*` — post-sampling wave/radial/noise displacement + rotation cycles
 
 ### S7 — polish
-- [ ] mobile `ANIM` dock section
-- [ ] grid cache keyed on grid signature (sequence playback rebuilds the same grid every frame)
-- [ ] README + AGENTS documentation for the new subsystem
-- [ ] save/load animation with presets (decide: separate `.symbolanim` json)
+- [x] mobile `ANIM` dock section
+- [x] grid cache keyed on grid signature (sequence playback rebuilds the same grid every frame)
+- [x] README + AGENTS documentation for the new subsystem
+- [x] save/load animation with presets (decide: separate `.symbolanim` json)
 
 ## Constraints worth repeating
 

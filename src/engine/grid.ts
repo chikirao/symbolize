@@ -17,13 +17,57 @@ export interface Cell {
 const MAX_CELLS = 400000
 
 /**
+ * The lattice depends on the grid settings, the seed and the image size — not
+ * on the pixels. Playing a 200-frame video would otherwise rebuild an identical
+ * lattice 200 times, which is the single most wasteful thing an animated source
+ * can do. Adaptive grids *do* read the pixels, so those are additionally keyed
+ * on the exact `SourceMaps` object.
+ *
+ * Callers treat the result as read-only; nothing in the pipeline mutates cells.
+ */
+let gridCache: { key: string; maps: SourceMaps | null; cells: Cell[] } | null = null
+
+function gridKey(settings: EditorSettings, maps: SourceMaps): string {
+  const g = settings.grid
+  return [
+    g.mode,
+    g.cellSize,
+    g.spacingX,
+    g.spacingY,
+    g.offsetX,
+    g.offsetY,
+    g.rotation,
+    g.jitterX,
+    g.jitterY,
+    g.minCellSize,
+    g.detail,
+    g.maxDepth,
+    settings.random.seed,
+    maps.imageWidth,
+    maps.imageHeight,
+  ].join('|')
+}
+
+export function invalidateGridCache(): void {
+  gridCache = null
+}
+
+/**
  * Builds sampling points across the whole image. Coordinates are in *image
  * space*, so the same settings produce the same composition at any output
  * resolution (preview or export).
  */
 export function buildGrid(settings: EditorSettings, maps: SourceMaps): Cell[] {
-  if (settings.grid.mode === 'adaptive') return buildAdaptiveGrid(settings, maps)
-  return buildLatticeGrid(settings, maps.imageWidth, maps.imageHeight)
+  const adaptive = settings.grid.mode === 'adaptive'
+  const key = gridKey(settings, maps)
+  if (gridCache && gridCache.key === key && (!adaptive || gridCache.maps === maps)) {
+    return gridCache.cells
+  }
+  const cells = adaptive
+    ? buildAdaptiveGrid(settings, maps)
+    : buildLatticeGrid(settings, maps.imageWidth, maps.imageHeight)
+  gridCache = { key, maps: adaptive ? maps : null, cells }
+  return cells
 }
 
 function buildLatticeGrid(settings: EditorSettings, imageW: number, imageH: number): Cell[] {
