@@ -10,6 +10,7 @@ import type {
   TextSymbolDef,
 } from '../types/editor'
 import { buildSourceMaps } from '../engine/luminance'
+import { disposeSequence, frameSource, type SourceSequence } from '../engine/sequence'
 import { invalidateSilhouetteCache } from '../engine/renderer'
 import {
   BUILTIN_PRESETS,
@@ -73,6 +74,8 @@ interface EditorStore {
   settings: EditorSettings
   image: LoadedImage | null
   maps: SourceMaps | null
+  /** decoded video / animated image; the timeline drives which frame renders */
+  sequence: SourceSequence | null
   customSymbols: CustomSymbolDef[]
   textSymbols: TextSymbolDef[]
   presets: Preset[]
@@ -91,6 +94,7 @@ interface EditorStore {
   replaceSettings: (s: EditorSettings, presetId?: string | null) => void
 
   loadImageSource: (canvas: HTMLCanvasElement, name: string) => void
+  loadSequence: (sequence: SourceSequence) => void
   clearImage: () => void
 
   addCustomSymbol: (def: CustomSymbolDef) => void
@@ -124,6 +128,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
   settings: clone(DEFAULT_SETTINGS),
   image: null,
   maps: null,
+  sequence: null,
   customSymbols: [],
   textSymbols: [],
   presets: [...BUILTIN_PRESETS, ...loadUserPresets()],
@@ -191,20 +196,55 @@ export const useEditor = create<EditorStore>((set, get) => ({
   loadImageSource: (canvas, name) => {
     invalidateSilhouetteCache()
     invalidateSelectionCache()
+    disposeSequence(get().sequence)
     const maps = buildSourceMaps(canvas)
     set((s) => ({
       image: { name, width: canvas.width, height: canvas.height, canvas },
       maps,
+      sequence: null,
       glitchToken: s.glitchToken + 1,
       view: { ...s.view, fitToken: s.view.fitToken + 1, panX: 0, panY: 0 },
       status: { kind: 'ready', message: 'READY', progress: -1 },
     }))
   },
 
+  /**
+   * A sequence keeps `image`/`maps` pointing at its first frame so every panel
+   * that only needs dimensions, a thumbnail or a mask preview keeps working.
+   * The render path asks `engine/sequence` for the frame it actually wants, so
+   * playback never writes to this store.
+   */
+  loadSequence: (sequence) => {
+    invalidateSilhouetteCache()
+    invalidateSelectionCache()
+    const previous = get().sequence
+    if (previous && previous.id !== sequence.id) disposeSequence(previous)
+    const first = frameSource(sequence, 0)
+    set((s) => ({
+      sequence,
+      image: {
+        name: sequence.name,
+        width: sequence.width,
+        height: sequence.height,
+        canvas: first.canvas,
+      },
+      maps: first.maps,
+      glitchToken: s.glitchToken + 1,
+      view: { ...s.view, fitToken: s.view.fitToken + 1, panX: 0, panY: 0 },
+      status: {
+        kind: 'ready',
+        message:
+          'SEQUENCE :: ' + sequence.frames.length + ' FRAMES @ ' + sequence.fps + ' FPS',
+        progress: -1,
+      },
+    }))
+  },
+
   clearImage: () => {
     invalidateSilhouetteCache()
     invalidateSelectionCache()
-    set({ image: null, maps: null, stats: null })
+    disposeSequence(get().sequence)
+    set({ image: null, maps: null, sequence: null, stats: null })
   },
 
   addCustomSymbol: (def) => {

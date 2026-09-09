@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
+import { useAnim } from '../store/animStore'
 import type { RenderStats } from '../types/editor'
 import { renderComposite, renderCompositeAsync } from '../engine/renderer'
+import { evaluateFrame } from '../engine/animation'
+import { frameSource } from '../engine/sequence'
 import { estimateCellCount } from '../engine/grid'
 import { runGlitchOverlay } from '../ui/glitch'
 import { AsciiBox } from './Primitives'
@@ -26,6 +29,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
   const settings = useEditor((s) => s.settings)
   const maps = useEditor((s) => s.maps)
   const image = useEditor((s) => s.image)
+  const sequence = useEditor((s) => s.sequence)
   const customSymbols = useEditor((s) => s.customSymbols)
   const textSymbols = useEditor((s) => s.textSymbols)
   const view = useEditor((s) => s.view)
@@ -33,21 +37,33 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
   const glitchToken = useEditor((s) => s.glitchToken)
   const setStats = useEditor((s) => s.setStats)
   const setView = useEditor((s) => s.setView)
+  const project = useAnim((s) => s.project)
+  const frame = useAnim((s) => s.frame)
+  const playing = useAnim((s) => s.playing)
 
   const [renderMs, setRenderMs] = useState(0)
   const [renderRes, setRenderRes] = useState<[number, number]>([0, 0])
+  const [sourceFrame, setSourceFrame] = useState(0)
 
   /* ---------------- render ---------------- */
 
   const doRender = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || !maps || !image) return
-    const quality = interacting ? 'low' : view.quality
+
+    // With an animated source the renderer reads the frame straight out of the
+    // sequence cache: playback must not write to the editor store.
+    const source = sequence ? frameSource(sequence, frame) : null
+    const activeMaps = source ? source.maps : maps
+    const original: CanvasImageSource = source ? source.canvas : image.canvas
+    const active = evaluateFrame(settings, project, frame)
+
+    const quality = interacting || playing ? 'low' : view.quality
     const budget = QUALITY_BUDGET[quality]
-    const px = maps.imageWidth * maps.imageHeight
+    const px = activeMaps.imageWidth * activeMaps.imageHeight
     const scale = Math.max(0.08, Math.min(2, Math.sqrt(budget / px)))
-    const w = Math.max(1, Math.round(maps.imageWidth * scale))
-    const h = Math.max(1, Math.round(maps.imageHeight * scale))
+    const w = Math.max(1, Math.round(activeMaps.imageWidth * scale))
+    const h = Math.max(1, Math.round(activeMaps.imageHeight * scale))
 
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w
@@ -60,17 +76,21 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
       ctx,
       outputWidth: w,
       outputHeight: h,
-      scale: w / maps.imageWidth,
-      maps,
-      settings,
-      original: image.canvas,
+      scale: w / activeMaps.imageWidth,
+      maps: activeMaps,
+      settings: active,
+      original,
       customSymbols,
       textSymbols,
     }
 
     // Heavy grids would freeze the tab for a second or more: draw those in
     // chunks so the UI keeps responding and the status bar can report progress.
-    const heavy = estimateCellCount(settings, maps.imageWidth, maps.imageHeight) > HEAVY_CELLS
+    // Mid-playback that would tear instead — two jobs painting one canvas — so
+    // while playing we stay synchronous and simply drop frames.
+    const heavy =
+      !playing &&
+      estimateCellCount(active, activeMaps.imageWidth, activeMaps.imageHeight) > HEAVY_CELLS
     const token = ++jobRef.current
 
     // original layer used by before/after + show-original
@@ -86,7 +106,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
         octx.clearRect(0, 0, w, h)
         octx.imageSmoothingEnabled = true
         octx.imageSmoothingQuality = 'high'
-        octx.drawImage(image.canvas, 0, 0, w, h)
+        octx.drawImage(original, 0, 0, w, h)
       }
     }
 
@@ -94,6 +114,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
       setStats(stats)
       setRenderMs(stats.ms)
       setRenderRes([w, h])
+      if (source) setSourceFrame(source.index)
     }
 
     if (heavy) {
@@ -111,7 +132,20 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
     }
 
     finish(renderComposite(req))
-  }, [maps, image, settings, customSymbols, textSymbols, interacting, view.quality, setStats])
+  }, [
+    maps,
+    image,
+    sequence,
+    settings,
+    project,
+    frame,
+    playing,
+    customSymbols,
+    textSymbols,
+    interacting,
+    view.quality,
+    setStats,
+  ])
 
   useEffect(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
@@ -382,7 +416,9 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
       }
       footerLeft={
         <span>
-          PREVIEW {renderRes[0]}x{renderRes[1]} :: {interacting ? 'DRAFT' : view.quality.toUpperCase()}
+          PREVIEW {renderRes[0]}x{renderRes[1]} ::{' '}
+          {interacting || playing ? 'DRAFT' : view.quality.toUpperCase()}
+          {sequence && ` :: SRC ${sourceFrame + 1}/${sequence.frames.length}`}
         </span>
       }
       footerRight={<span>{renderMs.toFixed(1)}ms</span>}

@@ -55,12 +55,12 @@ Key decisions:
 - [x] `src/store/animStore.ts` — project state, playhead, transport flags, track edit actions
 
 ### S2 — animated source
-- [ ] `src/engine/media.ts` — decode video (seek-based) + animated GIF/WebP/APNG (`ImageDecoder`)
-- [ ] `src/engine/sequence.ts` — `SourceSequence` + LRU cache of per-frame `SourceMaps`
-- [ ] store: `loadSequence` / `clearSequence`, `image` mirrors the current frame
-- [ ] `CanvasViewport` renders the sequence frame for the current playhead
-- [ ] `App.tsx` / `SourcePanel` accept video + animated image files (drop, picker, paste)
-- [ ] `src/engine/gifDecode.ts` — hand-written GIF fallback for browsers without `ImageDecoder`
+- [x] `src/engine/media.ts` — decode video (seek-based) + animated GIF/WebP/APNG (`ImageDecoder`)
+- [x] `src/engine/sequence.ts` — `SourceSequence` + LRU cache of per-frame `SourceMaps`
+- [x] store: `loadSequence` / `clearSequence`, `image` mirrors the current frame
+- [x] `CanvasViewport` renders the sequence frame for the current playhead
+- [x] `App.tsx` / `SourcePanel` accept video + animated image files (drop, picker, paste)
+- [x] `src/engine/gifDecode.ts` — hand-written GIF fallback for browsers without `ImageDecoder`
 
 ### S3 — transport + timeline UI
 - [ ] `src/components/Timeline.tsx` — desktop panel, collapsible, ASCII transport

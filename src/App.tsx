@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useEditor } from './store/editorStore'
+import { useAnim } from './store/animStore'
 import { Toolbar } from './components/Toolbar'
+import { TransportClock } from './components/TransportClock'
 import { CanvasViewport } from './components/CanvasViewport'
 import { ControlPanel } from './components/ControlPanel'
 import { SourcePanel } from './components/SourcePanel'
@@ -11,6 +13,8 @@ import { MobileWorkspace } from './components/MobileWorkspace'
 import { AsciiBox } from './components/Primitives'
 import { armIntro, runIntro } from './ui/intro'
 import { loadDemoImage } from './engine/demo'
+import { decodeMediaFile, isVideoFile, looksAnimated, releaseFrames } from './engine/media'
+import { createSequence } from './engine/sequence'
 import {
   imageFileFromTransfer,
   loadImageFile,
@@ -26,6 +30,7 @@ export default function App() {
   )
   const settings = useEditor((s) => s.settings)
   const loadImageSource = useEditor((s) => s.loadImageSource)
+  const loadSequence = useEditor((s) => s.loadSequence)
   const setStatus = useEditor((s) => s.setStatus)
   const requestFit = useEditor((s) => s.requestFit)
   const randomizeSeed = useEditor((s) => s.randomizeSeed)
@@ -94,9 +99,8 @@ export default function App() {
   }, [])
 
   /* ---------------- image loading ---------------- */
-  const handleFile = useCallback(
-    async (file: File | undefined | null, label?: string) => {
-      if (!file) return
+  const handleStill = useCallback(
+    async (file: File, label?: string) => {
       setStatus({ kind: 'busy', message: 'READING IMAGE...', progress: -1 })
       try {
         await new Promise((r) => setTimeout(r, 16))
@@ -115,6 +119,73 @@ export default function App() {
       }
     },
     [loadImageSource, setStatus],
+  )
+
+  /**
+   * Videos and animated images decode into a frame sequence the timeline
+   * drives. A file that turns out to hold a single frame — a static GIF, a
+   * one-frame WebP — falls back to the still path rather than becoming a
+   * one-frame animation.
+   */
+  const decodeJob = useRef<AbortController | null>(null)
+  const handleMedia = useCallback(
+    async (file: File, label?: string) => {
+      decodeJob.current?.abort()
+      const job = new AbortController()
+      decodeJob.current = job
+      const anim = useAnim.getState()
+      const kind = isVideoFile(file) ? 'VIDEO' : 'ANIMATION'
+      setStatus({ kind: 'busy', message: 'DECODING ' + kind + '...', progress: 0 })
+      try {
+        const media = await decodeMediaFile(file, {
+          maxSide: anim.importSide,
+          maxFrames: anim.importMaxFrames,
+          fps: anim.importFps,
+          signal: job.signal,
+          onProgress: (progress, message) =>
+            setStatus({ kind: 'busy', message, progress }),
+        })
+        if (media.frames.length < 2) {
+          releaseFrames(media.frames)
+          await handleStill(file, label)
+          return
+        }
+        const sequence = createSequence(media)
+        sequence.name = (label || file.name || sequence.name).toUpperCase()
+        loadSequence(sequence)
+        useAnim.getState().syncToSequence(sequence.frames.length, sequence.fps)
+        setStatus({
+          kind: 'ready',
+          message:
+            'SEQUENCE :: ' +
+            sequence.frames.length +
+            ' FRAMES @ ' +
+            sequence.fps +
+            ' FPS' +
+            (media.truncated ? ' :: TRUNCATED' : ''),
+          progress: -1,
+        })
+      } catch (err) {
+        if (job.signal.aborted) return
+        setStatus({
+          kind: 'error',
+          message: String((err as Error).message || 'MEDIA DECODE FAILED'),
+          progress: -1,
+        })
+      } finally {
+        if (decodeJob.current === job) decodeJob.current = null
+      }
+    },
+    [handleStill, loadSequence, setStatus],
+  )
+
+  const handleFile = useCallback(
+    async (file: File | undefined | null, label?: string) => {
+      if (!file) return
+      if (looksAnimated(file)) return handleMedia(file, label)
+      return handleStill(file, label)
+    },
+    [handleMedia, handleStill],
   )
 
   const pickFile = useCallback(() => fileRef.current?.click(), [])
@@ -211,6 +282,7 @@ export default function App() {
 
   return (
     <div className="app-shell h-full w-full flex flex-col bg-black text-fg min-w-[900px]">
+      <TransportClock />
       <Toolbar onPickFile={pickFile} onPaste={pasteFromClipboard} />
 
       {mobileLayout ? (
@@ -251,7 +323,7 @@ export default function App() {
       <input
         ref={fileRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+        accept="image/png,image/jpeg,image/webp,image/gif,image/avif,video/*,.png,.jpg,.jpeg,.webp,.gif,.avif,.mp4,.m4v,.webm,.mov"
         className="hidden"
         onChange={(e) => {
           void handleFile(e.target.files?.[0])
@@ -264,9 +336,9 @@ export default function App() {
           <div className="ascii-art text-fg text-center">
             {`┌──────────────────────────────────┐
 │                                  │
-│        DROP IMAGE TO BEGIN       │
+│      DROP IMAGE OR VIDEO IN      │
 │                                  │
-│     JPG / PNG / WEBP / GIF       │
+│   JPG PNG WEBP / GIF MP4 WEBM    │
 │                                  │
 └──────────────────────────────────┘`}
           </div>

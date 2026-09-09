@@ -39,6 +39,11 @@ interface AnimStore {
   /** bumped whenever playback should restart its clock from the playhead */
   clockToken: number
 
+  /** decode settings for the next video / gif import */
+  importSide: number
+  importFps: number
+  importMaxFrames: number
+
   setProject: (p: AnimationProject) => void
   setFrame: (f: number) => void
   stepFrame: (delta: number) => void
@@ -54,6 +59,7 @@ interface AnimStore {
   /** matches the timeline to a freshly loaded video / gif */
   syncToSequence: (frames: number, fps: number) => void
 
+  setImport: (patch: Partial<{ importSide: number; importFps: number; importMaxFrames: number }>) => void
   setOpen: (open: boolean) => void
   toggleOpen: () => void
   setAutoKey: (on: boolean) => void
@@ -80,6 +86,9 @@ export const useAnim = create<AnimStore>((set, get) => ({
   autoKey: true,
   selected: null,
   clockToken: 0,
+  importSide: 800,
+  importFps: 12,
+  importMaxFrames: 240,
 
   setProject: (project) =>
     set((s) => {
@@ -128,6 +137,7 @@ export const useAnim = create<AnimStore>((set, get) => ({
       return { project, frame: 0, open: true, clockToken: s.clockToken + 1 }
     }),
 
+  setImport: (patch) => set(patch),
   setOpen: (open) => set({ open }),
   toggleOpen: () => set((s) => ({ open: !s.open })),
   setAutoKey: (autoKey) => set({ autoKey }),

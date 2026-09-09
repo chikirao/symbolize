@@ -16,10 +16,18 @@ export function analysisSizeFor(w: number, h: number): [number, number] {
 /**
  * One-time pass over the pixels: luminance, alpha and average RGB maps.
  * L = 0.2126 R + 0.7152 G + 0.0722 B
+ *
+ * `width`/`height` are only needed for sources that do not carry usable
+ * intrinsic dimensions; a canvas or an `ImageBitmap` reports its own.
  */
-export function buildSourceMaps(source: HTMLCanvasElement): SourceMaps {
-  const imageWidth = source.width
-  const imageHeight = source.height
+export function buildSourceMaps(
+  source: CanvasImageSource,
+  width?: number,
+  height?: number,
+): SourceMaps {
+  const intrinsic = source as { width?: number; height?: number }
+  const imageWidth = width ?? intrinsic.width ?? 1
+  const imageHeight = height ?? intrinsic.height ?? 1
   const [aw, ah] = analysisSizeFor(imageWidth, imageHeight)
 
   const scratch = document.createElement('canvas')
