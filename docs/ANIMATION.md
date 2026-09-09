@@ -127,6 +127,26 @@ above: one item at a time, `npm run build` clean, commit, tick the box.
 - [ ] per-pixel transparency for unchanged pixels inside the diff rectangle
 - [ ] a quality readout: palette size actually used, bytes per frame
 
+### R6 — density
+The terminal skin is right, but the panel count has grown and the interface now
+reads as busy. Rule for this group: never remove a capability, only change what
+is *drawn by default*. Anything hidden must be one obvious click away.
+
+Already done (in the jump-fix commit): rate/length/loop/auto-key moved out of the
+collapsed transport, and the empty `[ ]` keyframe marker only appears while the
+timeline is open.
+
+- [ ] ADD TRACK menu is a wall of 74 items — collapse to group headers, one group
+      open at a time
+- [ ] the parameter panel opens three sections by default and has thirteen; try
+      remembering the open set per session instead of a fixed default
+- [ ] look for readouts printed twice (timeline header vs status bar vs canvas
+      footer) and keep one
+- [ ] **needs the user's call, do not decide alone:** a BASIC / ALL switch that
+      hides the advanced sections (adaptive grid, edges, mask tolerance, blend
+      modes) behind one toggle. It only helps if BASIC is the default, and that
+      changes what every existing user sees — ask first.
+
 ### R5 — timeline UX
 - [ ] onion skin: draw the previous and next keyed frame faintly under the current one
 - [ ] loop region (play a sub-range) separate from the export range
