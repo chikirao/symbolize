@@ -151,6 +151,8 @@ export function Toggle(props: {
   onChange: (v: boolean) => void
   label?: string
   disabled?: boolean
+  /** keep the label for screen readers but draw only the box */
+  hideLabel?: boolean
 }) {
   return (
     <button
@@ -163,7 +165,7 @@ export function Toggle(props: {
       onClick={() => !props.disabled && props.onChange(!props.checked)}
     >
       {props.checked ? '[x]' : '[ ]'}
-      {props.label ? ' ' + props.label : ''}
+      {props.label && !props.hideLabel ? ' ' + props.label : ''}
     </button>
   )
 }

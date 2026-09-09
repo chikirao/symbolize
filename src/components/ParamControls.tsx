@@ -39,13 +39,14 @@ function useAnimatedParam(path: string): AnimatedParam {
     return trackValueAt(track, s.frame)
   })
   const keyState = useAnim((s) => (meta ? keyStateFor(path, s.frame, s.project) : 'none'))
-  const autoKey = useAnim((s) => s.autoKey)
+  // AUTO KEY only lives inside the expanded timeline, so it only bites there
+  const recording = useAnim((s) => s.autoKey && s.open)
 
   return {
     animatable: !!meta,
     value: animated !== undefined ? animated : base,
     keyState,
-    keying: !!meta && (keyState !== 'none' || autoKey),
+    keying: !!meta && (keyState !== 'none' || recording),
   }
 }
 
@@ -69,11 +70,20 @@ function commitParam(path: string, value: KeyValue, keying: boolean, live: boole
 
 /* ------------------------------------------------------------------ */
 
-/** `[ ]` no track, `[.]` track but no key here, `[*]` key on this frame. */
+/**
+ * `[ ]` no track, `[.]` track but no key here, `[*]` key on this frame.
+ *
+ * An empty marker on all seventy-odd parameters is a lot of furniture for
+ * someone who is only retouching a photo, so the empty state is only drawn
+ * while the timeline is open. A parameter that *is* animated always shows its
+ * marker, timeline open or not — that one is information, not an affordance.
+ */
 export function KeyDot(props: { path: string; value: KeyValue }) {
   const meta = animatableFor(props.path)
   const keyState = useAnim((s) => (meta ? keyStateFor(props.path, s.frame, s.project) : 'none'))
+  const timelineOpen = useAnim((s) => s.open)
   if (!meta) return null
+  if (keyState === 'none' && !timelineOpen) return null
 
   const glyph = keyState === 'key' ? '[*]' : keyState === 'track' ? '[.]' : '[ ]'
   const title =

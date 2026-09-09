@@ -451,12 +451,26 @@
   .tl-track.is-selected {
     background: #0c0c0c;
   }
+  /* Fixed height: this row swaps its contents as the playhead crosses keys,
+     and it must not change the height of the panel while doing so. */
   .tl-track-detail {
     grid-column: 1 / -1;
     display: flex;
     align-items: center;
     gap: 6px;
+    min-height: 18px;
     padding: 1px 0 3px 104px;
+  }
+
+  .tl-settings {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px 4px;
+    padding-top: 2px;
+  }
+  .tl-settings .tl-field:first-child {
+    margin-left: 0;
   }
 
   .tl-track-name {

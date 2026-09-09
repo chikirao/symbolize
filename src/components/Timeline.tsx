@@ -33,6 +33,8 @@ function charForFrame(frame: number, duration: number, chars: number): number {
   return Math.max(0, Math.min(chars - 1, Math.round(t * (chars - 1))))
 }
 
+const pad3 = (n: number) => String(n).padStart(3, '0')
+
 function frameForRatio(t: number, duration: number): number {
   return Math.max(0, Math.min(duration - 1, Math.round(t * (duration - 1))))
 }
@@ -178,7 +180,8 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
       </button>
       <Toggle
         checked={!track.muted}
-        label={'enable ' + label}
+        label={'ENABLE ' + label}
+        hideLabel
         onChange={() => muteTrack(track.path)}
       />
       <Strip
@@ -229,16 +232,29 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
         </button>
       </span>
 
-      {selected === track.path && here && meta?.kind !== 'step' && (
+      {/* Rendered for the whole time a track is selected, not only on frames
+          that happen to hold a key: tying it to `here` made the row grow and
+          shrink under the playhead, so the entire panel jumped on every key
+          during playback. Selecting a track is a click; the layout may move
+          then. Playback must never move it. */}
+      {selected === track.path && (
         <div className="tl-track-detail text-xxs text-fg2">
-          KEY {here.frame} :: EASING
-          <SelectControl
-            value={here.easing}
-            width={11}
-            ariaLabel="key easing"
-            options={EASINGS}
-            onChange={(v) => setEasingAt(track.path, here.frame, v as Easing)}
-          />
+          {here && meta?.kind !== 'step' ? (
+            <>
+              KEY {pad3(here.frame)} :: EASING
+              <SelectControl
+                value={here.easing}
+                width={11}
+                ariaLabel="key easing"
+                options={EASINGS}
+                onChange={(v) => setEasingAt(track.path, here.frame, v as Easing)}
+              />
+            </>
+          ) : (
+            <span className="text-fg3">
+              {here ? 'STEP KEY :: HOLDS UNTIL THE NEXT ONE' : 'NO KEY ON THIS FRAME'}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -366,8 +382,6 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
   // open there and the [+]/[-] title toggle would be a second, confusing one.
   const expanded = props.compact || open
 
-  const pad = (n: number) => String(n).padStart(3, '0')
-
   const saveProject = () => {
     const blob = new Blob([serializeProject(project)], { type: 'application/json' })
     downloadBlob(blob, 'symbolize-animation.json')
@@ -433,56 +447,61 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
         </button>
 
         <span className="text-fg text-xs2 ml-2">
-          FRAME {pad(frame)}/{pad(duration - 1)}
-        </span>
-
-        <span className="tl-field text-xxs text-fg2">
-          FPS
-          <NumberField
-            value={project.fps}
-            min={1}
-            max={60}
-            step={1}
-            decimals={0}
-            width={44}
-            ariaLabel="frames per second"
-            onChange={(v) => setFps(v)}
-          />
-        </span>
-        <span className="tl-field text-xxs text-fg2">
-          LEN
-          <NumberField
-            value={duration}
-            min={MIN_FRAMES}
-            max={MAX_FRAMES}
-            step={1}
-            decimals={0}
-            width={52}
-            ariaLabel="timeline length in frames"
-            onChange={(v) => setDuration(v)}
-          />
-        </span>
-        <span className="tl-field text-xxs text-fg2">
-          LOOP
-          <SelectControl
-            value={project.loop}
-            width={9}
-            ariaLabel="loop mode"
-            options={[
-              { value: 'loop', label: 'LOOP' },
-              { value: 'pingpong', label: 'PINGPONG' },
-              { value: 'once', label: 'ONCE' },
-            ]}
-            onChange={(v) => setLoop(v as LoopMode)}
-          />
-        </span>
-        <span className="tl-field text-xxs text-fg2">
-          <Toggle checked={autoKey} label="AUTO KEY" onChange={setAutoKey} />
+          FRAME {pad3(frame)}/{pad3(duration - 1)}
         </span>
       </div>
 
       {expanded && (
         <>
+          {/* Rate, length, loop and auto-key are set once and then left alone.
+              Keeping them out of the collapsed bar means someone editing a
+              still photo sees a transport, not a control desk. */}
+          <div className="tl-settings">
+            <span className="tl-field text-xxs text-fg2">
+              FPS
+              <NumberField
+                value={project.fps}
+                min={1}
+                max={60}
+                step={1}
+                decimals={0}
+                width={44}
+                ariaLabel="frames per second"
+                onChange={(v) => setFps(v)}
+              />
+            </span>
+            <span className="tl-field text-xxs text-fg2">
+              LEN
+              <NumberField
+                value={duration}
+                min={MIN_FRAMES}
+                max={MAX_FRAMES}
+                step={1}
+                decimals={0}
+                width={52}
+                ariaLabel="timeline length in frames"
+                onChange={(v) => setDuration(v)}
+              />
+            </span>
+            <span className="tl-field text-xxs text-fg2">
+              LOOP
+              <SelectControl
+                value={project.loop}
+                width={9}
+                ariaLabel="loop mode"
+                options={[
+                  { value: 'loop', label: 'LOOP' },
+                  { value: 'pingpong', label: 'PINGPONG' },
+                  { value: 'once', label: 'ONCE' },
+                ]}
+                onChange={(v) => setLoop(v as LoopMode)}
+              />
+            </span>
+            <span className="tl-field text-xxs text-fg2">
+              <Toggle checked={autoKey} label="AUTO KEY" onChange={setAutoKey} />
+            </span>
+          </div>
+
           <div className="tl-ruler">
             <span className="tl-track-name text-xxs text-fg3">FRAME</span>
             <Strip
@@ -492,7 +511,7 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
               headChar="█"
               onScrub={(r) => setFrame(frameForRatio(r, duration))}
             />
-            <span className="tl-value text-xxs text-fg3">{pad(frame)}</span>
+            <span className="tl-value text-xxs text-fg3">{pad3(frame)}</span>
           </div>
 
           <div className="tl-tracks">
