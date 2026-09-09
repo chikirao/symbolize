@@ -60,6 +60,8 @@ export const DEFAULT_SETTINGS: EditorSettings = {
     selectMode: 'random',
     strokeWeight: 0.14,
     noiseScale: 0.01,
+    noisePhase: 0,
+    sequenceOffset: 0,
   },
   color: {
     mode: 'luminance-gradient',
@@ -70,9 +72,12 @@ export const DEFAULT_SETTINGS: EditorSettings = {
     saturation: 0,
     brightness: 0,
     jitter: 0,
+    gradientOffset: 0,
   },
   opacity: { mode: 'constant', min: 0.15, max: 1, gamma: 1, jitter: 0 },
-  density: { value: 100, mode: 'constant' },
+  density: { value: 100, mode: 'constant', softness: 0 },
+  reveal: { mode: 'linear', amount: 1, softness: 0.12, angle: 0, invert: false },
+  motion: { mode: 'wave', amplitudeX: 0, amplitudeY: 0, frequency: 1, phase: 0, swirl: 0 },
   mask: {
     enabled: false,
     source: 'alpha',

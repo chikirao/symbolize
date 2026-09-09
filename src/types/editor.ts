@@ -18,6 +18,8 @@ export type OpacityMode = 'constant' | 'luminance' | 'alpha'
 export type DensityMode = 'constant' | 'dark' | 'light'
 export type SymbolSelectMode = 'random' | 'luminance' | 'sequential' | 'noise'
 export type MaskSource = 'alpha' | 'luminance' | 'combined' | 'color'
+export type RevealMode = 'linear' | 'radial' | 'luminance' | 'noise'
+export type MotionMode = 'wave' | 'radial' | 'noise'
 export type EdgeShapeMode = 'inside' | 'edges' | 'both'
 export type BlendMode = 'normal' | 'multiply' | 'screen' | 'overlay' | 'lighten' | 'darken'
 export type BackgroundMode = 'transparent' | 'white' | 'black' | 'custom'
@@ -95,6 +97,10 @@ export interface EditorSettings {
     selectMode: SymbolSelectMode
     strokeWeight: number // fraction of symbol size
     noiseScale: number
+    /** 0..1 loop-safe phase through the temporal noise field */
+    noisePhase: number
+    /** scrolls the sequential pool, so a symbol run can march over time */
+    sequenceOffset: number
   }
   color: {
     mode: ColorMode
@@ -105,6 +111,8 @@ export interface EditorSettings {
     saturation: number // -1..1
     brightness: number // -1..1
     jitter: number // 0..1
+    /** -1..1 rotation of the gradient LUT, wrapping at the ends */
+    gradientOffset: number
   }
   opacity: {
     mode: OpacityMode
@@ -116,6 +124,25 @@ export interface EditorSettings {
   density: {
     value: number // 0..100
     mode: DensityMode
+    /** 0..1 — fades cells in around the cutoff instead of popping them */
+    softness: number
+  }
+  /** Independent wipe applied after the mask: what fraction of the frame is on. */
+  reveal: {
+    mode: RevealMode
+    amount: number // 0..1, 1 = everything visible
+    softness: number // 0..1 feather width of the wipe front
+    angle: number // degrees, linear mode
+    invert: boolean
+  }
+  /** Post-sampling displacement — moves symbols without moving the source. */
+  motion: {
+    mode: MotionMode
+    amplitudeX: number // image px
+    amplitudeY: number // image px
+    frequency: number // waves across the image
+    phase: number // 0..1, one full cycle
+    swirl: number // -2..2 rotation around the centre, radial mode
   }
   mask: {
     enabled: boolean
