@@ -63,15 +63,15 @@ Key decisions:
 - [x] `src/engine/gifDecode.ts` — hand-written GIF fallback for browsers without `ImageDecoder`
 
 ### S3 — transport + timeline UI
-- [ ] `src/components/Timeline.tsx` — desktop panel, collapsible, ASCII transport
-- [ ] playback clock (rAF, integer target frame, drops frames when the renderer is behind)
-- [ ] draft quality while playing, full quality on pause
-- [ ] pause on tab hide; respect `prefers-reduced-motion` (no autoplay, manual PLAY is fine)
+- [x] `src/components/Timeline.tsx` — desktop panel, collapsible, ASCII transport
+- [x] playback clock (rAF, integer target frame, drops frames when the renderer is behind)
+- [x] draft quality while playing, full quality on pause
+- [x] pause on tab hide; respect `prefers-reduced-motion` (no autoplay, manual PLAY is fine)
 
 ### S4 — keyframe tracks UI
-- [ ] keyframe marker + add/remove on `ParamSlider` / `ParamColor` / `ParamToggle` / `ParamSelect`
-- [ ] AUTO KEY behaviour (first edit also writes the base value at frame 0)
-- [ ] track rows in the timeline with per-frame markers, click to scrub, drag to move keys
+- [x] keyframe marker + add/remove on `ParamSlider` / `ParamColor` / `ParamToggle` / `ParamSelect`
+- [x] AUTO KEY behaviour (first edit also writes the base value at frame 0)
+- [x] track rows in the timeline with per-frame markers, click to scrub, drag to move keys
 
 ### S5 — export
 - [ ] `src/engine/encode/gif.ts` — palette quantisation + Floyd–Steinberg + LZW, zero deps

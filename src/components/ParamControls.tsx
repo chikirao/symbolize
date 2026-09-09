@@ -1,11 +1,112 @@
 import React from 'react'
 import { useEditor } from '../store/editorStore'
+import { useAnim, keyStateFor } from '../store/animStore'
+import type { KeyValue } from '../types/anim'
 import { getPath } from '../store/path'
+import { animatableFor } from '../engine/animatable'
+import { findTrack, trackValueAt } from '../engine/animation'
 import { SliderControl } from './SliderControl'
 import { ColorField, RadioRow, Row, SelectControl, Toggle } from './Primitives'
 
 /* Store-bound controls: each one subscribes to a single settings path so a
-   slider drag does not re-render the whole panel. */
+   slider drag does not re-render the whole panel.
+
+   Animation rides on the same subscription. A parameter with a track shows the
+   value at the playhead and writes keyframes when you drag it — otherwise the
+   slider would visibly do nothing, because the track wins at render time. A
+   parameter without a track only writes keys when AUTO KEY is armed. */
+
+interface AnimatedParam {
+  /** null when the path is not in the animatable registry */
+  animatable: boolean
+  /** the value to display: the track's value at the playhead, or the base one */
+  value: unknown
+  keyState: 'none' | 'track' | 'key'
+  /** true when edits should become keyframes rather than base-settings changes */
+  keying: boolean
+}
+
+function useAnimatedParam(path: string): AnimatedParam {
+  const meta = animatableFor(path)
+  const base = useEditor((s) => getPath<unknown>(s.settings, path))
+
+  // Both selectors return primitives, so a control only re-renders when its own
+  // value or marker actually changes — not on every playhead tick.
+  const animated = useAnim((s) => {
+    if (!meta) return undefined
+    const track = findTrack(s.project, path)
+    if (!track || track.muted) return undefined
+    return trackValueAt(track, s.frame)
+  })
+  const keyState = useAnim((s) => (meta ? keyStateFor(path, s.frame, s.project) : 'none'))
+  const autoKey = useAnim((s) => s.autoKey)
+
+  return {
+    animatable: !!meta,
+    value: animated !== undefined ? animated : base,
+    keyState,
+    keying: !!meta && (keyState !== 'none' || autoKey),
+  }
+}
+
+/** Writes an edit to the right place: a keyframe, or the base settings. */
+function commitParam(path: string, value: KeyValue, keying: boolean, live: boolean): void {
+  if (!keying) {
+    const store = useEditor.getState()
+    if (live) store.setParamLive(path, value)
+    else store.setParam(path, value)
+    return
+  }
+  const anim = useAnim.getState()
+  const track = findTrack(anim.project, path)
+  // A brand new track started mid-timeline would snap frame 0 to the new value
+  // as well. Pin the value you can currently see at 0 first.
+  if (!track && anim.frame !== 0) {
+    anim.putKeyAt(path, 0, getPath<KeyValue>(useEditor.getState().settings, path))
+  }
+  anim.putKeyAt(path, anim.frame, value)
+}
+
+/* ------------------------------------------------------------------ */
+
+/** `[ ]` no track, `[.]` track but no key here, `[*]` key on this frame. */
+export function KeyDot(props: { path: string; value: KeyValue }) {
+  const meta = animatableFor(props.path)
+  const keyState = useAnim((s) => (meta ? keyStateFor(props.path, s.frame, s.project) : 'none'))
+  if (!meta) return null
+
+  const glyph = keyState === 'key' ? '[*]' : keyState === 'track' ? '[.]' : '[ ]'
+  const title =
+    keyState === 'key'
+      ? 'remove the keyframe on this frame'
+      : keyState === 'track'
+        ? 'key this frame'
+        : 'animate this parameter'
+
+  return (
+    <button
+      type="button"
+      className={
+        'key-dot text-xxs ' +
+        (keyState === 'key' ? 'has-key' : keyState === 'track' ? 'has-track' : '')
+      }
+      aria-label={title}
+      title={title}
+      onClick={() => {
+        const anim = useAnim.getState()
+        if (keyState === 'key') anim.removeKeyHere(props.path)
+        else {
+          if (keyState === 'none' && anim.frame !== 0) anim.putKeyAt(props.path, 0, props.value)
+          anim.keyHere(props.path, props.value)
+        }
+      }}
+    >
+      {glyph}
+    </button>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 
 export function ParamSlider(props: {
   path: string
@@ -18,13 +119,14 @@ export function ParamSlider(props: {
   disabled?: boolean
   hint?: string
 }) {
-  const value = useEditor((s) => getPath<number>(s.settings, props.path))
-  const setLive = useEditor((s) => s.setParamLive)
+  const param = useAnimatedParam(props.path)
   const reset = useEditor((s) => s.resetParam)
+  const value = typeof param.value === 'number' ? param.value : 0
+
   return (
     <SliderControl
       label={props.label}
-      value={typeof value === 'number' ? value : 0}
+      value={value}
       min={props.min}
       max={props.max}
       step={props.step}
@@ -32,7 +134,8 @@ export function ParamSlider(props: {
       suffix={props.suffix}
       disabled={props.disabled}
       hint={props.hint}
-      onChange={(v) => setLive(props.path, v)}
+      marker={param.animatable ? <KeyDot path={props.path} value={value} /> : undefined}
+      onChange={(v) => commitParam(props.path, v, param.keying, true)}
       onReset={() => reset(props.path)}
     />
   )
@@ -44,16 +147,18 @@ export function ParamToggle(props: {
   disabled?: boolean
   hint?: string
 }) {
-  const value = useEditor((s) => getPath<boolean>(s.settings, props.path))
-  const set = useEditor((s) => s.setParam)
+  const param = useAnimatedParam(props.path)
   const reset = useEditor((s) => s.resetParam)
+  const checked = param.value === true || param.value === 'true'
+
   return (
     <Row label={props.label} hint={props.hint} onReset={() => reset(props.path)}>
+      {param.animatable && <KeyDot path={props.path} value={String(checked)} />}
       <Toggle
-        checked={!!value}
+        checked={checked}
         disabled={props.disabled}
         label={props.label}
-        onChange={(v) => set(props.path, v)}
+        onChange={(v) => commitParam(props.path, param.keying ? String(v) : v, param.keying, false)}
       />
     </Row>
   )
@@ -66,17 +171,19 @@ export function ParamSelect<T extends string>(props: {
   hint?: string
   width?: number
 }) {
-  const value = useEditor((s) => getPath<T>(s.settings, props.path))
-  const set = useEditor((s) => s.setParam)
+  const param = useAnimatedParam(props.path)
   const reset = useEditor((s) => s.resetParam)
+  const value = String(param.value ?? '') as T
+
   return (
     <Row label={props.label} hint={props.hint} onReset={() => reset(props.path)}>
+      {param.animatable && <KeyDot path={props.path} value={value} />}
       <SelectControl
         value={value}
         options={props.options}
         ariaLabel={props.label}
         width={props.width}
-        onChange={(v) => set(props.path, v)}
+        onChange={(v) => commitParam(props.path, v, param.keying, false)}
       />
     </Row>
   )
@@ -87,28 +194,30 @@ export function ParamRadio<T extends string>(props: {
   options: { value: T; label: string }[]
   columns?: number
 }) {
-  const value = useEditor((s) => getPath<T>(s.settings, props.path))
-  const set = useEditor((s) => s.setParam)
+  const param = useAnimatedParam(props.path)
+  const value = String(param.value ?? '') as T
   return (
     <RadioRow
       value={value}
       options={props.options}
       columns={props.columns}
-      onChange={(v) => set(props.path, v)}
+      onChange={(v) => commitParam(props.path, v, param.keying, false)}
     />
   )
 }
 
 export function ParamColor(props: { path: string; label: string }) {
-  const value = useEditor((s) => getPath<string>(s.settings, props.path))
-  const set = useEditor((s) => s.setParam)
+  const param = useAnimatedParam(props.path)
   const reset = useEditor((s) => s.resetParam)
+  const value = String(param.value ?? '#FFFFFF').toUpperCase()
+
   return (
     <Row label={props.label} onReset={() => reset(props.path)}>
+      {param.animatable && <KeyDot path={props.path} value={value} />}
       <ColorField
-        value={value || '#ffffff'}
+        value={value || '#FFFFFF'}
         ariaLabel={props.label}
-        onChange={(v) => set(props.path, v.toUpperCase())}
+        onChange={(v) => commitParam(props.path, v.toUpperCase(), param.keying, false)}
       />
     </Row>
   )

@@ -3,6 +3,7 @@ import { useEditor } from './store/editorStore'
 import { useAnim } from './store/animStore'
 import { Toolbar } from './components/Toolbar'
 import { TransportClock } from './components/TransportClock'
+import { Timeline } from './components/Timeline'
 import { CanvasViewport } from './components/CanvasViewport'
 import { ControlPanel } from './components/ControlPanel'
 import { SourcePanel } from './components/SourcePanel'
@@ -275,6 +276,18 @@ export default function App() {
       else if (e.key === 'r' || e.key === 'R') randomizeSeed()
       else if (e.key === 'o' || e.key === 'O')
         setView({ showOriginal: !useEditor.getState().view.showOriginal })
+      // transport
+      else if (e.key === ' ') {
+        e.preventDefault()
+        useAnim.getState().togglePlay()
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        useAnim.getState().stepFrame(e.shiftKey ? -10 : -1)
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        useAnim.getState().stepFrame(e.shiftKey ? 10 : 1)
+      } else if (e.key === 'Home') useAnim.getState().toFirst()
+      else if (e.key === 'End') useAnim.getState().toLast()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -316,6 +329,7 @@ export default function App() {
             </AsciiBox>
           </div>
 
+          <Timeline className="desktop-timeline mx-4 mb-2" />
           <StatusBar className="desktop-status" />
         </>
       )}

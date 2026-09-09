@@ -397,6 +397,175 @@
     padding: 0;
   }
 
+  /* --- timeline ------------------------------------------------------ */
+  .timeline {
+    flex: 0 0 auto;
+  }
+  .tl-title {
+    color: var(--fg);
+    letter-spacing: 0.12em;
+    cursor: pointer;
+  }
+  .tl-title:hover {
+    color: var(--fg);
+    text-decoration: underline;
+  }
+  .btn.is-on {
+    color: var(--fg);
+    text-decoration: underline;
+  }
+
+  .tl-transport {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .tl-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 8px;
+    white-space: nowrap;
+  }
+
+  .tl-ruler,
+  .tl-track {
+    display: grid;
+    align-items: center;
+    gap: 4px;
+  }
+  .tl-track {
+    grid-template-columns: 104px 34px minmax(0, 1fr) 56px auto;
+  }
+  .tl-ruler {
+    /* no mute toggle and no row actions, so the strip spans both */
+    grid-template-columns: 104px minmax(0, 1fr) 56px;
+    margin-top: 4px;
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tl-track {
+    border-bottom: 1px solid #141414;
+  }
+  .tl-track.is-selected {
+    background: #0c0c0c;
+  }
+  .tl-track-detail {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 1px 0 3px 104px;
+  }
+
+  .tl-track-name {
+    color: var(--fg2);
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .tl-track-name:hover {
+    color: var(--fg);
+  }
+  .tl-value {
+    text-align: right;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .tl-track-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  /* The strip is a fixed character count, like every other meter here, so a
+     row can never come out a few characters wider than its neighbours. */
+  .tl-strip {
+    min-width: 0;
+    white-space: pre;
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+    line-height: 1.1;
+  }
+  .tl-strip:focus-visible {
+    outline: 1px dashed var(--fg);
+  }
+  .tl-head {
+    color: var(--fg);
+  }
+
+  .tl-tracks {
+    max-height: 168px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .tl-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 3px;
+  }
+  .tl-add {
+    position: relative;
+  }
+  .tl-add-menu {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    z-index: 80;
+    width: min(760px, 78vw);
+    max-height: 46vh;
+    overflow-y: auto;
+    background: #000;
+    border: 1px solid var(--line2);
+    padding: 6px 8px;
+  }
+  .tl-add-group {
+    margin-bottom: 4px;
+  }
+  .tl-add-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0 8px;
+  }
+  .tl-add-item {
+    color: var(--fg2);
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tl-add-item:hover:not(:disabled) {
+    color: var(--fg);
+  }
+  .tl-add-item:disabled {
+    color: var(--off);
+    cursor: default;
+  }
+
+  /* --- keyframe marker on a parameter row ----------------------------- */
+  .key-dot {
+    color: var(--off);
+    cursor: pointer;
+    padding: 0 1px;
+  }
+  .key-dot:hover {
+    color: var(--fg);
+  }
+  .key-dot.has-track {
+    color: var(--fg2);
+  }
+  .key-dot.has-key {
+    color: var(--fg);
+  }
+
   /* --- misc ---------------------------------------------------------- */
   .checker {
     background-color: #0a0a0a;

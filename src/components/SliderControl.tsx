@@ -26,6 +26,8 @@ export interface SliderProps {
   onChange: (v: number) => void
   onReset?: () => void
   suffix?: string
+  /** keyframe marker, rendered next to the value (see ParamControls) */
+  marker?: React.ReactNode
 }
 
 export function SliderControl(props: SliderProps) {
@@ -58,6 +60,7 @@ export function SliderControl(props: SliderProps) {
           {props.label}
         </span>
         <span className="flex items-baseline">
+          {props.marker}
           <NumberField
             value={value}
             min={min}

@@ -32,7 +32,11 @@ interface AnimStore {
   playing: boolean
   /** timeline panel expanded */
   open: boolean
-  /** editing a parameter writes a keyframe instead of the base value */
+  /**
+   * When armed, editing an un-animated parameter starts a track instead of
+   * changing the base value. Off by default: loading a video should not turn
+   * every slider into a keyframe recorder.
+   */
   autoKey: boolean
   /** path whose track row is expanded in the timeline */
   selected: string | null
@@ -83,7 +87,7 @@ export const useAnim = create<AnimStore>((set, get) => ({
   frame: 0,
   playing: false,
   open: false,
-  autoKey: true,
+  autoKey: false,
   selected: null,
   clockToken: 0,
   importSide: 800,
