@@ -94,6 +94,44 @@ Key decisions:
 - [x] README + AGENTS documentation for the new subsystem
 - [x] save/load animation with presets (decide: separate `.symbolanim` json)
 
+## Round two — what to build next
+
+S1-S7 shipped: animated sources, timeline, keyframes, four export formats, the new motion /
+reveal parameters, mobile. This is the queue after that, roughly in value order. Same rule as
+above: one item at a time, `npm run build` clean, commit, tick the box.
+
+### R1 — animation presets
+- [ ] `ANIM_PRESETS` in a new `src/engine/animPresets.ts`: HUE LOOP, BREATHE, WIPE IN, SWIRL,
+      DRIFT, DISSOLVE — each a small set of tracks over a stated duration
+- [ ] one-click apply from the timeline footer, scaling key frames to the current duration
+- [ ] presets must only touch registry paths, and must read sensibly on a video source too
+
+### R2 — per-frame render cost
+- [ ] `patternTarget()` allocates a full-size canvas per frame when a blend or opacity is set —
+      reuse one across frames instead
+- [ ] `allocBuffer` allocates nine typed arrays per frame; keep and grow a buffer instead
+- [ ] silhouette / mask-alpha canvases are keyed on `SourceMaps`, so an animated source misses
+      the cache every frame — key them per frame or cache a small ring
+- [ ] measure before and after on a 200-frame sequence and put the numbers in the commit
+
+### R3 — video import robustness
+- [ ] test a real camera mp4 (H.264, variable frame rate) rather than only our own WebM
+- [ ] fall back to `requestVideoFrameCallback` playback capture when seeking stalls or returns
+      duplicate frames — some encodes seek badly without an index
+- [ ] in / out trim points at decode time, so a 3-minute clip does not need all 240 frames
+- [ ] report decoded memory in the SOURCE panel and warn before a huge decode
+
+### R4 — GIF quality
+- [ ] optional global palette built from a sample of every frame: bigger first pass, but no
+      palette flicker between frames on gradients
+- [ ] per-pixel transparency for unchanged pixels inside the diff rectangle
+- [ ] a quality readout: palette size actually used, bytes per frame
+
+### R5 — timeline UX
+- [ ] onion skin: draw the previous and next keyed frame faintly under the current one
+- [ ] loop region (play a sub-range) separate from the export range
+- [ ] copy / paste a key, and nudge a key with the arrow keys when a track row has focus
+
 ## Constraints worth repeating
 
 * `getImageData` stays **one call per decoded frame**, in `buildSourceMaps`. Never per element.
