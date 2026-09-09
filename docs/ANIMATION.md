@@ -97,14 +97,42 @@ Key decisions:
 ## Round two — what to build next
 
 S1-S7 shipped: animated sources, timeline, keyframes, four export formats, the new motion /
-reveal parameters, mobile. This is the queue after that, roughly in value order. Same rule as
-above: one item at a time, `npm run build` clean, commit, tick the box.
+reveal parameters, mobile.
 
-### R1 — animation presets
-- [x] `ANIM_PRESETS` in a new `src/engine/animPresets.ts`: HUE LOOP, BREATHE, WIPE IN, SWIRL,
-      DRIFT, DISSOLVE — each a small set of tracks over a stated duration
-- [x] one-click apply from the timeline footer, scaling key frames to the current duration
-- [x] presets must only touch registry paths, and must read sensibly on a video source too
+**Priority, stated by the owner:** the point of this mode is *picking a zone out of a photo or a
+video — by colour range or whatever works — and animating that zone*, juicy and modern. Wipes,
+fades and whole-frame intros are the least interesting part of it and should not eat the queue.
+Everything below is ordered against that.
+
+### Z — zones (the actual feature)
+
+The selection machinery already exists: `mask.picks` + tolerance + contiguous in
+[selection.ts](../src/engine/selection.ts) already produce a per-pixel field, and
+`calculateElements` already samples it into `maskF`. Today that field can only do one thing —
+delete the cells outside it. The whole feature is letting the same field *drive* parameters
+instead of only gating them. One selection, two uses, no second picker UI.
+
+- [x] `mask.mode: 'gate' | 'select'` — `select` keeps every cell and only defines the zone
+- [x] `zone.*`: `strength`, `sizeScale`, `opacityScale`, `rotate`, `hueShift`, `gradientOffset`,
+      `densityScale`, `motionScale`, `outside`, plus `enabled`
+- [x] renderer folds `zoneF` into size / opacity / rotation / colour / density / motion, all of it
+      weighted by the same soft field, so a feathered selection gives a feathered effect
+- [x] every one of those in the animatable registry — animating `zone.hueShift` 0 -> 360 while the
+      rest of the frame stays put is the headline shot
+- [x] ZONE panel in the parameter list, next to the picker that already exists
+- [x] zone-driven animation presets: ZONE PULSE, ZONE HUE, ZONE RIPPLE, ZONE ONLY
+- [ ] second and third zone (`zones[]` rather than one `zone`), each with its own picks and its
+      own overrides — do this only once one zone feels right
+- [ ] zone edge as its own thing: outline the selection with symbols, animate the outline
+
+### Z2 — zones on video, which is where they get expensive
+- [ ] `getSelectionMask` is cached on the `SourceMaps` identity, so an animated source misses the
+      cache on every single frame. Measure it first, then cache per frame index or narrow the
+      recompute to the picks that changed.
+- [ ] contiguous (magic-wand) selection re-floods per frame; consider seeding the flood from the
+      previous frame's result
+- [ ] a colour picked on frame 0 drifts as the video changes — decide whether tolerance should
+      widen automatically, or leave that to a keyframe on `mask.tolerance`
 
 ### R2 — per-frame render cost
 - [ ] `patternTarget()` allocates a full-size canvas per frame when a blend or opacity is set —
@@ -121,31 +149,54 @@ above: one item at a time, `npm run build` clean, commit, tick the box.
 - [ ] in / out trim points at decode time, so a 3-minute clip does not need all 240 frames
 - [ ] report decoded memory in the SOURCE panel and warn before a huge decode
 
+### R6 — density
+
+The terminal skin is right, but the panel count has grown and the interface reads as busy. Rule
+for this group: never remove a capability, only change what is *drawn by default*, and anything
+hidden must be one obvious click away.
+
+Already done (in the jump-fix commit): rate/length/loop/auto-key moved out of the collapsed
+transport, and the empty `[ ]` keyframe marker only appears while the timeline is open.
+
+- [ ] ADD TRACK menu is a wall of 74 items — collapse to group headers, one group open at a time
+- [ ] look for readouts printed twice (timeline header vs status bar vs canvas footer), keep one
+
+#### BASIC / ADVANCED — how to do it without a second list
+
+The trap is maintaining "which controls are basic" as a list somewhere, because it drifts the
+moment anyone adds a parameter. So: **no list.** Mark the exceptions at the single place the
+control is already declared, and let everything else be basic by default.
+
+```tsx
+<Section id="grid" title="GRID">
+  <ParamSlider path="grid.cellSize" label="CELL SIZE" ... />
+  <ParamSlider path="grid.detail" label="DETAIL" ... advanced />   // <- the only new thing
+</Section>
+<Section id="edges" title="EDGES" advanced>...</Section>           // whole section
+```
+
+* `advanced` is a boolean prop on `Section`, `ParamSlider`, `ParamToggle`, `ParamSelect`,
+  `ParamColor` and `Row`. One flag, at the declaration, next to the thing it describes.
+* A control with no flag is basic. That is the safe failure mode: forget the flag on something new
+  and it *appears*, rather than silently vanishing.
+* A `Section` marked `advanced` hides wholesale; a section with only advanced children left
+  visible hides itself too, so no empty headers.
+* The switch lives in the existing `VIEW` menu as `[ ] ADVANCED`, persisted in localStorage next
+  to the presets. No new panel, no new chrome.
+* The panel foot always shows `N ADVANCED CONTROLS HIDDEN :: [SHOW]` when anything is hidden —
+  that is what keeps it from feeling lossy, and it doubles as the discovery path.
+* Counting comes from the same flags (walk the rendered tree once), not from a hand-kept number.
+
+- [ ] implement the `advanced` flag plumbing above
+- [ ] tag the genuinely advanced controls: adaptive-grid trio, edge contrast/boost, mask
+      tolerance/contiguous, blend modes, original clip, opacity and size gammas, jitters
+- [ ] **the default is the owner's call** — it only helps if ADVANCED starts off, and that changes
+      what he sees on open. Build it defaulting to off, tell him, make it one click to flip.
+
 ### R4 — GIF quality
 - [ ] optional global palette built from a sample of every frame: bigger first pass, but no
       palette flicker between frames on gradients
 - [ ] per-pixel transparency for unchanged pixels inside the diff rectangle
-- [ ] a quality readout: palette size actually used, bytes per frame
-
-### R6 — density
-The terminal skin is right, but the panel count has grown and the interface now
-reads as busy. Rule for this group: never remove a capability, only change what
-is *drawn by default*. Anything hidden must be one obvious click away.
-
-Already done (in the jump-fix commit): rate/length/loop/auto-key moved out of the
-collapsed transport, and the empty `[ ]` keyframe marker only appears while the
-timeline is open.
-
-- [ ] ADD TRACK menu is a wall of 74 items — collapse to group headers, one group
-      open at a time
-- [ ] the parameter panel opens three sections by default and has thirteen; try
-      remembering the open set per session instead of a fixed default
-- [ ] look for readouts printed twice (timeline header vs status bar vs canvas
-      footer) and keep one
-- [ ] **needs the user's call, do not decide alone:** a BASIC / ALL switch that
-      hides the advanced sections (adaptive grid, edges, mask tolerance, blend
-      modes) behind one toggle. It only helps if BASIC is the default, and that
-      changes what every existing user sees — ask first.
 
 ### R5 — timeline UX
 - [ ] onion skin: draw the previous and next keyed frame faintly under the current one
