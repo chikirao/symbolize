@@ -550,6 +550,23 @@
     cursor: default;
   }
 
+  .tl-preset-menu {
+    width: min(460px, 62vw);
+  }
+  .tl-preset-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 1px 0;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tl-preset-item:hover {
+    background: #111;
+  }
+
   /* --- keyframe marker on a parameter row ----------------------------- */
   .key-dot {
     color: var(--off);

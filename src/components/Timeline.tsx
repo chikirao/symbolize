@@ -13,6 +13,7 @@ import {
 } from '../engine/animation'
 import { downloadBlob } from '../engine/export'
 import { animatableFor, animatableGroups } from '../engine/animatable'
+import { ANIM_PRESETS } from '../engine/animPresets'
 import { AsciiBox, NumberField, SelectControl, Toggle, format } from './Primitives'
 
 /**
@@ -299,6 +300,39 @@ function AddTrack() {
   )
 }
 
+/** One-click timelines, laid onto whatever length the timeline already is. */
+function PresetMenu() {
+  const applyPreset = useAnim((s) => s.applyPreset)
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="tl-add">
+      <button type="button" className="btn text-xxs" onClick={() => setOpen((v) => !v)}>
+        {open ? '- PRESET' : '+ PRESET'}
+      </button>
+      {open && (
+        <div className="tl-add-menu tl-preset-menu">
+          {ANIM_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className="tl-preset-item text-xxs"
+              title={preset.note}
+              onClick={() => {
+                applyPreset(preset.id)
+                setOpen(false)
+              }}
+            >
+              <span className="text-fg">{preset.name}</span>
+              <span className="text-fg3"> :: {preset.note.toUpperCase()}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------------ */
 
 export function Timeline(props: { className?: string; compact?: boolean }) {
@@ -464,7 +498,8 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
           <div className="tl-tracks">
             {project.tracks.length === 0 && (
               <div className="text-fg3 text-xxs py-1">
-                NO TRACKS :: ADD ONE BELOW, OR TURN ON AUTO KEY AND MOVE A SLIDER
+                NO TRACKS :: START FROM A PRESET BELOW, ADD ONE BY HAND, OR TURN ON AUTO KEY AND
+                MOVE A SLIDER
               </div>
             )}
             {project.tracks.map((track) => (
@@ -474,6 +509,7 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
 
           <div className="tl-footer">
             <AddTrack />
+            <PresetMenu />
             <button
               type="button"
               className="btn text-xxs"

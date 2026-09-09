@@ -101,10 +101,10 @@ reveal parameters, mobile. This is the queue after that, roughly in value order.
 above: one item at a time, `npm run build` clean, commit, tick the box.
 
 ### R1 — animation presets
-- [ ] `ANIM_PRESETS` in a new `src/engine/animPresets.ts`: HUE LOOP, BREATHE, WIPE IN, SWIRL,
+- [x] `ANIM_PRESETS` in a new `src/engine/animPresets.ts`: HUE LOOP, BREATHE, WIPE IN, SWIRL,
       DRIFT, DISSOLVE — each a small set of tracks over a stated duration
-- [ ] one-click apply from the timeline footer, scaling key frames to the current duration
-- [ ] presets must only touch registry paths, and must read sensibly on a video source too
+- [x] one-click apply from the timeline footer, scaling key frames to the current duration
+- [x] presets must only touch registry paths, and must read sensibly on a video source too
 
 ### R2 — per-frame render cost
 - [ ] `patternTarget()` allocates a full-size canvas per frame when a blend or opacity is set —

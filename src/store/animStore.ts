@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AnimationProject, Easing, KeyValue, LoopMode } from '../types/anim'
 import { DEFAULT_ANIMATION } from '../types/anim'
+import { applyAnimPreset, animPresetById } from '../engine/animPresets'
 import {
   clampFps,
   clampFrames,
@@ -75,6 +76,7 @@ interface AnimStore {
   removeKeyAt: (path: string, frame: number) => void
   dragKey: (path: string, from: number, to: number) => void
   setEasingAt: (path: string, frame: number, easing: Easing) => void
+  applyPreset: (id: string) => void
   dropTrack: (path: string) => void
   muteTrack: (path: string) => void
   clearTracks: () => void
@@ -160,6 +162,13 @@ export const useAnim = create<AnimStore>((set, get) => ({
 
   setEasingAt: (path, frame, easing) =>
     set((s) => ({ project: setKeyEasing(s.project, path, frame, easing) })),
+
+  applyPreset: (id) =>
+    set((s) => {
+      const preset = animPresetById(id)
+      if (!preset) return {}
+      return { project: applyAnimPreset(s.project, preset), open: true }
+    }),
 
   dropTrack: (path) =>
     set((s) => ({
