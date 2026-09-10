@@ -187,11 +187,28 @@ export const ANIMATABLE_PARAMS: AnimatableParam[] = [
   n('edges.boost', 'EDGE BOOST', 'EDGES', 0, 2, 0.01, 2),
   b('edges.enabled', 'EDGE MODE', 'EDGES'),
 
+  /* --- zone: the selection driving parameters instead of hiding things --- */
+  n('zone.strength', 'ZONE STRENGTH', 'ZONE', 0, 1, 0.01, 2),
+  n('zone.sizeScale', 'ZONE SIZE', 'ZONE', 0, 3, 0.01, 2, 'elements', 'x'),
+  n('zone.opacityScale', 'ZONE OPACITY', 'ZONE', 0, 3, 0.01, 2, 'elements', 'x'),
+  n('zone.densityScale', 'ZONE DENSITY', 'ZONE', 0, 3, 0.01, 2, 'elements', 'x'),
+  a('zone.rotate', 'ZONE ROTATE', 'ZONE', -1080, 1080),
+  a('zone.hueShift', 'ZONE HUE', 'ZONE', -720, 720),
+  n('zone.saturation', 'ZONE SATURATION', 'ZONE', -1, 1, 0.01, 2),
+  n('zone.gradientOffset', 'ZONE GRADIENT', 'ZONE', -1, 1, 0.001, 3),
+  n('zone.motionAmount', 'ZONE MOTION', 'ZONE', 0, 200, 0.5, 1, 'elements', 'px'),
+  b('zone.enabled', 'ZONE ON', 'ZONE'),
+  b('zone.outside', 'ZONE OUTSIDE', 'ZONE'),
+
   /* --- mask --- */
   n('mask.threshold', 'MASK THRESHOLD', 'MASK', 0, 1, 0.01, 2, 'topology'),
   n('mask.feather', 'MASK FEATHER', 'MASK', 0, 0.5, 0.005, 3, 'topology'),
   n('mask.tolerance', 'MASK TOLERANCE', 'MASK', 0.01, 1, 0.005, 3, 'topology'),
   b('mask.enabled', 'MASK ENABLED', 'MASK', 'topology'),
+  s('mask.mode', 'MASK MODE', 'MASK', [
+    { value: 'gate', label: 'GATE' },
+    { value: 'select', label: 'SELECT' },
+  ], 'topology'),
   b('mask.invert', 'MASK INVERT', 'MASK', 'topology'),
   c('mask.silhouette.color', 'FILL COLOR', 'MASK', 'cheap'),
   n('mask.silhouette.opacity', 'FILL OPACITY', 'MASK', 0, 1, 0.01, 2, 'cheap'),

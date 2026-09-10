@@ -391,6 +391,16 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
       <Section id="mask" title="MASK / SILHOUETTE" open={isOpen('mask')} onToggle={toggle}>
         <ParamToggle path="mask.enabled" label="MASK ENABLED" />
         <ParamSelect
+          path="mask.mode"
+          label="MASK MODE"
+          width={8}
+          options={[
+            { value: 'gate', label: 'GATE' },
+            { value: 'select', label: 'SELECT' },
+          ]}
+          hint="GATE hides everything outside. SELECT hides nothing and only marks the zone."
+        />
+        <ParamSelect
           path="mask.source"
           label="MASK SOURCE"
           options={[
@@ -426,6 +436,33 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         <ParamToggle path="mask.silhouette.enabled" label="SHOW FILL" />
         <ParamColor path="mask.silhouette.color" label="FILL COLOR" />
         <ParamSlider path="mask.silhouette.opacity" label="FILL OPACITY" min={0} max={1} step={0.01} decimals={2} />
+      </Section>
+
+      {/* ---------------- ZONE ---------------- */}
+      <Section id="zone" title="ZONE" open={isOpen('zone')} onToggle={toggle}>
+        <ParamToggle
+          path="zone.enabled"
+          label="ZONE ON"
+          hint="the selection drives these instead of hiding what is outside it"
+        />
+        <ParamToggle path="zone.outside" label="INVERT ZONE" hint="apply to everything the selection misses" />
+        <ParamSlider path="zone.strength" label="STRENGTH" min={0} max={1} step={0.01} decimals={2} />
+        <div className="hr text-xxs my-1 select-none">── INSIDE THE ZONE {'─'.repeat(34)}</div>
+        <ParamSlider path="zone.sizeScale" label="SIZE" min={0} max={3} step={0.01} decimals={2} suffix="x" />
+        <ParamSlider path="zone.opacityScale" label="OPACITY" min={0} max={3} step={0.01} decimals={2} suffix="x" />
+        <ParamSlider path="zone.densityScale" label="DENSITY" min={0} max={3} step={0.01} decimals={2} suffix="x" />
+        <ParamSlider path="zone.rotate" label="ROTATE" min={-360} max={360} step={1} decimals={0} suffix="d" />
+        <ParamSlider path="zone.hueShift" label="HUE" min={-360} max={360} step={1} decimals={0} suffix="d" />
+        <ParamSlider path="zone.saturation" label="SATURATION" min={-1} max={1} step={0.01} decimals={2} />
+        <ParamSlider path="zone.gradientOffset" label="GRADIENT" min={-1} max={1} step={0.001} decimals={3} />
+        <ParamSlider path="zone.motionAmount" label="MOTION" min={0} max={200} step={0.5} decimals={1} suffix="px" />
+        <div className="pl-3 text-xxs text-fg3 mt-1 leading-snug">
+          {settings.mask.enabled
+            ? settings.mask.mode === 'select'
+              ? 'ZONE FOLLOWS THE MASK SELECTION :: EVERY SLIDER HERE IS ANIMATABLE.'
+              : 'MASK MODE IS GATE :: THE ZONE WORKS, BUT EVERYTHING OUTSIDE IS ALSO HIDDEN.'
+            : 'TURN THE MASK ON AND PICK A COLOUR FIRST :: THE ZONE RIDES ON THAT SELECTION.'}
+        </div>
       </Section>
 
       {/* ---------------- EDGES ---------------- */}

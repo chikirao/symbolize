@@ -18,6 +18,13 @@ export type OpacityMode = 'constant' | 'luminance' | 'alpha'
 export type DensityMode = 'constant' | 'dark' | 'light'
 export type SymbolSelectMode = 'random' | 'luminance' | 'sequential' | 'noise'
 export type MaskSource = 'alpha' | 'luminance' | 'combined' | 'color'
+/**
+ * What the selection does with the cells it covers.
+ * `gate` deletes everything outside it — the original behaviour.
+ * `select` keeps the whole frame and only marks the zone, so the ZONE block
+ * below can drive parameters inside it instead of hiding what is outside.
+ */
+export type MaskMode = 'gate' | 'select'
 export type RevealMode = 'linear' | 'radial' | 'luminance' | 'noise'
 export type MotionMode = 'wave' | 'radial' | 'noise'
 export type EdgeShapeMode = 'inside' | 'edges' | 'both'
@@ -146,6 +153,7 @@ export interface EditorSettings {
   }
   mask: {
     enabled: boolean
+    mode: MaskMode
     source: MaskSource
     threshold: number
     feather: number
@@ -161,6 +169,27 @@ export interface EditorSettings {
       color: string
       opacity: number
     }
+  }
+  /**
+   * Overrides applied to the cells the selection covers, weighted by the same
+   * soft field the mask uses — so a feathered pick gives a feathered effect.
+   * This is what makes "pick the jacket, animate the jacket" one selection
+   * rather than two.
+   */
+  zone: {
+    enabled: boolean
+    /** 0..1 master weight over every override below */
+    strength: number
+    /** apply to everything the selection does *not* cover */
+    outside: boolean
+    sizeScale: number // multiplier inside the zone
+    opacityScale: number
+    densityScale: number
+    rotate: number // degrees added inside the zone
+    hueShift: number // degrees
+    saturation: number // -1..1
+    gradientOffset: number // -1..1, rolls the LUT inside the zone only
+    motionAmount: number // image px of displacement added inside the zone
   }
   edges: {
     enabled: boolean

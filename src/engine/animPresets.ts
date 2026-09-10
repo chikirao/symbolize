@@ -37,7 +37,80 @@ const ease = (at: number, value: KeyValue, easing: Easing = 'in-out'): PresetKey
   easing,
 })
 
+/** Every zone preset needs the selection switched on and set to SELECT. */
+const ZONE_ON: PresetTrack[] = [
+  { path: 'mask.enabled', keys: [{ at: 0, value: 'true', easing: 'hold' }] },
+  { path: 'mask.mode', keys: [{ at: 0, value: 'select', easing: 'hold' }] },
+  { path: 'zone.enabled', keys: [{ at: 0, value: 'true', easing: 'hold' }] },
+]
+
 export const ANIM_PRESETS: AnimPreset[] = [
+  {
+    id: 'zone-pulse',
+    name: 'ZONE PULSE',
+    note: 'the picked zone swells and settles, the rest holds still',
+    tracks: [
+      ...ZONE_ON,
+      { path: 'zone.strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
+      { path: 'zone.sizeScale', keys: [ease(0, 1), ease(0.5, 1.9), ease(1, 1)] },
+      { path: 'zone.densityScale', keys: [ease(0, 1), ease(0.5, 1.35), ease(1, 1)] },
+    ],
+  },
+  {
+    id: 'zone-hue',
+    name: 'ZONE HUE',
+    note: 'colour runs a full turn inside the zone only',
+    tracks: [
+      ...ZONE_ON,
+      { path: 'zone.strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
+      {
+        path: 'zone.hueShift',
+        keys: [
+          { at: 0, value: 0, easing: 'linear' },
+          { at: 1, value: 360, easing: 'linear' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'zone-ripple',
+    name: 'ZONE RIPPLE',
+    note: 'the zone comes loose and drifts while everything else stays put',
+    tracks: [
+      ...ZONE_ON,
+      { path: 'zone.strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
+      { path: 'motion.mode', keys: [{ at: 0, value: 'noise', easing: 'hold' }] },
+      { path: 'motion.frequency', keys: [{ at: 0, value: 2.4, easing: 'linear' }] },
+      { path: 'zone.motionAmount', keys: [ease(0, 0), ease(0.5, 22), ease(1, 0)] },
+      {
+        path: 'motion.phase',
+        keys: [
+          { at: 0, value: 0, easing: 'linear' },
+          { at: 1, value: 1, easing: 'linear' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'zone-spot',
+    name: 'ZONE SPOT',
+    note: 'everything but the zone drains to grey and steps back',
+    tracks: [
+      ...ZONE_ON,
+      { path: 'zone.outside', keys: [{ at: 0, value: 'true', easing: 'hold' }] },
+      { path: 'zone.saturation', keys: [{ at: 0, value: -1, easing: 'linear' }] },
+      { path: 'zone.opacityScale', keys: [{ at: 0, value: 0.4, easing: 'linear' }] },
+      { path: 'zone.sizeScale', keys: [{ at: 0, value: 0.7, easing: 'linear' }] },
+      {
+        path: 'zone.strength',
+        keys: [
+          { at: 0, value: 0, easing: 'out' },
+          { at: 0.6, value: 1, easing: 'linear' },
+          { at: 1, value: 1, easing: 'linear' },
+        ],
+      },
+    ],
+  },
   {
     id: 'hue-loop',
     name: 'HUE LOOP',

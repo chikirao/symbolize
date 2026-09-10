@@ -199,15 +199,21 @@ export function calculateElements(
   const rt = settings.rotation
   const op = settings.opacity
   const th = settings.threshold
-  const mk = settings.mask
   const ed = settings.edges
   const colorJitter = settings.color.jitter
   const wantDominant = settings.color.mode === 'source-dominant'
   const poolLen = pool.length
   const noiseScale = Math.max(0.0005, settings.symbols.noiseScale)
+  const mk = settings.mask
   const rv = settings.reveal
   const mo = settings.motion
+  const zn = settings.zone
   const densitySoft = settings.density.softness
+
+  // The zone rides on the mask's field, so it needs a selection to exist at all.
+  const zoneOn = zn.enabled && mk.enabled && zn.strength > 0.001
+  const zoneTintsColour = zoneOn && (zn.hueShift !== 0 || zn.saturation !== 0)
+  const zoneAdj = { hueShift: 0, saturation: 0, brightness: 0 }
 
   // A reveal at full amount is the resting state, and skipping it there keeps
   // every still image on exactly the path it was on before reveal existed.
@@ -218,7 +224,11 @@ export function calculateElements(
   const revealCos = Math.cos(revealAngle)
   const revealSin = Math.sin(revealAngle)
 
-  const motionOn = mo.amplitudeX !== 0 || mo.amplitudeY !== 0 || mo.swirl !== 0
+  const motionOn =
+    mo.amplitudeX !== 0 ||
+    mo.amplitudeY !== 0 ||
+    mo.swirl !== 0 ||
+    (zn.enabled && mk.enabled && zn.motionAmount !== 0)
   const motionPhase = mo.phase * Math.PI * 2
   const motionFreq = Math.max(0.01, mo.frequency)
 
@@ -253,23 +263,36 @@ export function calculateElements(
     const sg = wantDominant ? sample.dg : sample.g
     const sb = wantDominant ? sample.db : sample.b
 
-    // ---- mask -------------------------------------------------------
+    // ---- mask / zone -------------------------------------------------
+    // One selection, two jobs. GATE deletes what falls outside it, the way it
+    // always has. SELECT keeps every cell and the field only says how strongly
+    // the ZONE overrides bite here — which is what makes "pick the jacket and
+    // animate the jacket" a single selection rather than two.
     let maskF = 1
+    let zoneF = 0
+    const gating = mk.enabled && mk.mode === 'gate'
     if (mk.enabled) {
       const sel = selection ? sampleSelection(maps, selection, cell.x, cell.y, cell.cw, cell.ch) : 0
       const mv = maskValue(rawLum, rawAlpha, sel, mk.source)
-      maskF =
+      let f =
         mk.feather <= 0.0005
           ? mv >= mk.threshold
             ? 1
             : 0
           : smoothstep(mk.threshold - mk.feather, mk.threshold + mk.feather, mv)
-      if (mk.invert) maskF = 1 - maskF
-      if (maskF <= 0.001) continue
-    } else if (rawAlpha <= 0.004) {
-      // fully transparent source pixels never produce symbols
-      continue
+      if (mk.invert) f = 1 - f
+      zoneF = f
+      if (gating) {
+        maskF = f
+        if (maskF <= 0.001) continue
+      }
     }
+    // fully transparent source pixels never produce symbols
+    if (!gating && rawAlpha <= 0.004) continue
+
+    // how hard the zone overrides bite in this cell
+    const zw = zoneOn ? (zn.outside ? 1 - zoneF : zoneF) * zn.strength : 0
+    const zoneBites = zw > 0.002
 
     // ---- levels -----------------------------------------------------
     const v = applyLevels(sourceValue(rawLum, rawAlpha, settings.source.mode), settings.source)
@@ -332,6 +355,7 @@ export function calculateElements(
     if (settings.density.mode === 'dark') p *= 1 - v
     else if (settings.density.mode === 'light') p *= v
     if (edgeMap && ed.mode !== 'inside') p *= 1 + edgeF * ed.boost
+    if (zoneBites && zn.densityScale !== 1) p *= 1 + (zn.densityScale - 1) * zw
     let densityF = 1
     if (p < 1) {
       if (densitySoft <= 0.001) {
@@ -384,6 +408,7 @@ export function calculateElements(
     if (edgeMap && ed.mode !== 'inside') size *= 1 + edgeF * ed.boost * 0.5
     if (revealF < 0.999) size *= lerp(0.35, 1, revealF)
     if (densityF < 0.999) size *= lerp(0.25, 1, densityF)
+    if (zoneBites && zn.sizeScale !== 1) size *= 1 + (zn.sizeScale - 1) * zw
     if (sz.clamp) size = Math.min(size, Math.min(cell.cw, cell.ch) * 1.25)
     if (size <= 0.05) continue
 
@@ -408,6 +433,7 @@ export function calculateElements(
         rot = rt.base
     }
     if (rt.jitter > 0) rot += (rRot - 0.5) * 2 * rt.jitter
+    if (zoneBites && zn.rotate !== 0) rot += zn.rotate * zw
 
     // ---- opacity ----------------------------------------------------
     let alpha: number
@@ -421,6 +447,7 @@ export function calculateElements(
     alpha *= thF
     if (mk.enabled) alpha *= maskF
     alpha *= revealF * densityF
+    if (zoneBites && zn.opacityScale !== 1) alpha *= 1 + (zn.opacityScale - 1) * zw
     alpha = clamp01(alpha)
     if (alpha <= 0.004) continue
 
@@ -458,7 +485,9 @@ export function calculateElements(
         } else t = v
         // gradientOffset rolls the LUT round, which is what turns a static
         // ramp into a travelling one; a non-cyclic gradient shows a seam.
-        let slot = Math.round(clamp01(t) * (LUT_SIZE - 1) + gradientOffset * LUT_SIZE)
+        const rollOffset =
+          gradientOffset + (zoneBites ? zn.gradientOffset * zw : 0)
+        let slot = Math.round(clamp01(t) * (LUT_SIZE - 1) + rollOffset * LUT_SIZE)
         slot = ((slot % LUT_SIZE) + LUT_SIZE) % LUT_SIZE
         const li = slot * 3
         cr = lut[li]
@@ -466,6 +495,17 @@ export function calculateElements(
         cb = lut[li + 2]
       }
     }
+    // The zone recolours whatever the colour mode produced, so it works the
+    // same on a solid fill, a gradient and colours sampled from the photo.
+    if (zoneTintsColour && zoneBites) {
+      zoneAdj.hueShift = zn.hueShift * zw
+      zoneAdj.saturation = zn.saturation * zw
+      applyAdjust(cr, cg, cb, zoneAdj, tmpColor)
+      cr = tmpColor[0]
+      cg = tmpColor[1]
+      cb = tmpColor[2]
+    }
+
     if (colorJitter > 0) {
       const j = colorJitter * 255
       cr += (rColR - 0.5) * 2 * j
@@ -479,6 +519,11 @@ export function calculateElements(
     let px = cell.x
     let py = cell.y
     if (motionOn) {
+      // Zone motion is added, not scaled: making just the jacket ripple must
+      // not require turning on a whole-frame wave first.
+      const zoneAdd = zoneBites ? zn.motionAmount * zw : 0
+      const ampX = mo.amplitudeX + zoneAdd
+      const ampY = mo.amplitudeY + zoneAdd
       if (mo.swirl !== 0) {
         const dx = px - cxCentre
         const dy = py - cyCentre
@@ -495,8 +540,8 @@ export function calculateElements(
           const dy = py - cyCentre
           const radius = Math.sqrt(dx * dx + dy * dy) || 1
           const wave = Math.sin((radius / maxRadius) * motionFreq * Math.PI * 2 - motionPhase)
-          px += (dx / radius) * mo.amplitudeX * wave
-          py += (dy / radius) * mo.amplitudeY * wave
+          px += (dx / radius) * ampX * wave
+          py += (dy / radius) * ampY * wave
           break
         }
         case 'noise': {
@@ -504,15 +549,15 @@ export function calculateElements(
           const ty = Math.sin(motionPhase) * 5
           const sx = cell.x * 0.004 * motionFreq
           const sy = cell.y * 0.004 * motionFreq
-          px += (valueNoise(seed ^ 0x6b17, sx + tx, sy + ty) - 0.5) * 2 * mo.amplitudeX
-          py += (valueNoise(seed ^ 0x1d4c, sx + tx + 37, sy + ty + 11) - 0.5) * 2 * mo.amplitudeY
+          px += (valueNoise(seed ^ 0x6b17, sx + tx, sy + ty) - 0.5) * 2 * ampX
+          py += (valueNoise(seed ^ 0x1d4c, sx + tx + 37, sy + ty + 11) - 0.5) * 2 * ampY
           break
         }
         default: {
           const nx = imgW > 0 ? cell.x / imgW : 0
           const ny = imgH > 0 ? cell.y / imgH : 0
-          px += mo.amplitudeX * Math.sin(ny * motionFreq * Math.PI * 2 + motionPhase)
-          py += mo.amplitudeY * Math.cos(nx * motionFreq * Math.PI * 2 + motionPhase)
+          px += ampX * Math.sin(ny * motionFreq * Math.PI * 2 + motionPhase)
+          py += ampY * Math.cos(nx * motionFreq * Math.PI * 2 + motionPhase)
         }
       }
     }
