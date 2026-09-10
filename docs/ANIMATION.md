@@ -121,9 +121,10 @@ instead of only gating them. One selection, two uses, no second picker UI.
       rest of the frame stays put is the headline shot
 - [x] ZONE panel in the parameter list, next to the picker that already exists
 - [x] zone-driven animation presets: ZONE PULSE, ZONE HUE, ZONE RIPPLE, ZONE ONLY
-- [ ] second and third zone (`zones[]` rather than one `zone`), each with its own picks and its
-      own overrides — do this only once one zone feels right
 - [ ] zone edge as its own thing: outline the selection with symbols, animate the outline
+- [ ] second and third zone (`zones[]` rather than one `zone`), each with its own picks and its
+      own overrides. One zone now works end to end, so this is unblocked — but it is a bigger
+      build than everything above it, and zones on *video* (Z2) matter more, so it goes after.
 
 ### Z2 — zones on video, which is where they get expensive
 - [ ] `getSelectionMask` is cached on the `SourceMaps` identity, so an animated source misses the
