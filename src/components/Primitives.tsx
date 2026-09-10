@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { scrambleSubtree, scrambleText } from '../ui/scramble'
 import { useT } from '../i18n'
+import { HoverDoc } from './HoverDoc'
 
 /* ------------------------------------------------------------------ */
 /* ASCII frame                                                         */
@@ -86,50 +87,14 @@ export function Scramble(props: {
 /* rows / labels                                                       */
 /* ------------------------------------------------------------------ */
 
-export function Hint(props: { text: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
-  const timer = useRef<number | undefined>(undefined)
-  const text = useT()(props.text)
-  return (
-    <span
-      className="hint-trigger relative"
-      role="button"
-      tabIndex={0}
-      aria-expanded={open}
-      onMouseEnter={() => {
-        timer.current = window.setTimeout(() => setOpen(true), 420)
-      }}
-      onMouseLeave={() => {
-        if (timer.current) clearTimeout(timer.current)
-        setOpen(false)
-      }}
-      onClick={() => setOpen((value) => !value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          setOpen((value) => !value)
-        }
-        if (e.key === 'Escape') setOpen(false)
-      }}
-    >
-      {props.children}
-      {open && (
-        <span className="tip ascii-art left-0 top-full mt-1 text-xs2">
-          <span className="tip-frame block text-fg3">┌{'─'.repeat(text.length + 2)}┐</span>
-          <span className="tip-copy block">│ {text} │</span>
-          <span className="tip-frame block text-fg3">└{'─'.repeat(text.length + 2)}┘</span>
-        </span>
-      )}
-    </span>
-  )
-}
-
 export function Row(props: {
   label: string
   onReset?: () => void
   hint?: string
   children: React.ReactNode
   className?: string
+  /** settings path, so the label can carry its own hover description */
+  docPath?: string
   /** hidden while the panel is in its plain state — see ControlPanel */
   advanced?: boolean
 }) {
@@ -143,9 +108,16 @@ export function Row(props: {
       {t(props.label)}
     </span>
   )
+  /* The description wins over the one-line hint: it says the same thing and
+     more, and two tips on one label is one too many. */
+  const doc = (
+    <HoverDoc path={props.docPath} title={t(props.label)} fallback={props.hint && t(props.hint)}>
+      {label}
+    </HoverDoc>
+  )
   return (
     <div className={'row ' + (props.advanced ? 'is-advanced ' : '') + (props.className || '')}>
-      {props.hint ? <Hint text={props.hint}>{label}</Hint> : label}
+      {doc}
       <div className="flex items-center justify-end gap-1">{props.children}</div>
     </div>
   )

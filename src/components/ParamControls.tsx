@@ -146,6 +146,7 @@ export function ParamSlider(props: {
       disabled={props.disabled}
       hint={props.hint}
       advanced={props.advanced}
+      docPath={props.path}
       marker={param.animatable ? <KeyDot path={props.path} value={value} /> : undefined}
       onChange={(v) => commitParam(props.path, v, param.keying, true)}
       onReset={() => reset(props.path)}
@@ -169,6 +170,7 @@ export function ParamToggle(props: {
       label={props.label}
       hint={props.hint}
       advanced={props.advanced}
+      docPath={props.path}
       onReset={() => reset(props.path)}
     >
       {param.animatable && <KeyDot path={props.path} value={String(checked)} />}
@@ -199,6 +201,7 @@ export function ParamSelect<T extends string>(props: {
       label={props.label}
       hint={props.hint}
       advanced={props.advanced}
+      docPath={props.path}
       onReset={() => reset(props.path)}
     >
       {param.animatable && <KeyDot path={props.path} value={value} />}
@@ -236,7 +239,12 @@ export function ParamColor(props: { path: string; label: string; advanced?: bool
   const value = String(param.value ?? '#FFFFFF').toUpperCase()
 
   return (
-    <Row label={props.label} advanced={props.advanced} onReset={() => reset(props.path)}>
+    <Row
+      label={props.label}
+      advanced={props.advanced}
+      docPath={props.path}
+      onReset={() => reset(props.path)}
+    >
       {param.animatable && <KeyDot path={props.path} value={value} />}
       <ColorField
         value={value || '#FFFFFF'}

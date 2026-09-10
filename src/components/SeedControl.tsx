@@ -3,6 +3,7 @@ import { useEditor } from '../store/editorStore'
 import { scrambleNumber } from '../ui/scramble'
 import { NumberField } from './Primitives'
 import { useT } from '../i18n'
+import { HoverDoc } from './HoverDoc'
 
 export function SeedControl() {
   const t = useT()
@@ -23,7 +24,9 @@ export function SeedControl() {
   return (
     <div className="pl-3 py-[1px]">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs2 uppercase text-fg2">{t('SEED')}</span>
+        <HoverDoc path="random.seed" title={t('SEED')}>
+          <span className="text-xs2 uppercase text-fg2">{t('SEED')}</span>
+        </HoverDoc>
         <span className="flex items-baseline gap-2">
           <span ref={ref} className="text-fg text-xs2 tabular-nums caret">
             {seed}

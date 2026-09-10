@@ -1,6 +1,7 @@
 import React from 'react'
 import { NumberField, format } from './Primitives'
 import { useT } from '../i18n'
+import { HoverDoc } from './HoverDoc'
 
 /**
  * Every ASCII meter is the same length. It used to be measured per slider,
@@ -31,6 +32,8 @@ export interface SliderProps {
   marker?: React.ReactNode
   /** hidden while the panel is in its plain state */
   advanced?: boolean
+  /** settings path, so the label can carry its own hover description */
+  docPath?: string
 }
 
 export function SliderControl(props: SliderProps) {
@@ -57,19 +60,19 @@ export function SliderControl(props: SliderProps) {
         &gt;
       </span>
       <div className="flex items-baseline justify-between gap-2">
-        <span
-          className="text-xs2 uppercase text-fg2 group-hover:text-fg truncate select-none"
-          onDoubleClick={props.onReset}
-          title={
-            props.hint
-              ? tx(props.hint)
-              : props.onReset
-                ? tx('double-click label to reset')
-                : undefined
-          }
+        <HoverDoc
+          path={props.docPath}
+          title={tx(props.label)}
+          fallback={props.hint && tx(props.hint)}
         >
-          {tx(props.label)}
-        </span>
+          <span
+            className="text-xs2 uppercase text-fg2 group-hover:text-fg truncate select-none"
+            onDoubleClick={props.onReset}
+            title={props.onReset ? tx('double-click label to reset') : undefined}
+          >
+            {tx(props.label)}
+          </span>
+        </HoverDoc>
         <span className="flex items-baseline">
           {props.marker}
           <NumberField

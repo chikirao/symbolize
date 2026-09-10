@@ -868,15 +868,33 @@
     user-select: none;
   }
 
-  .tip {
-    position: absolute;
-    z-index: 60;
+  /* Hover descriptions. Portalled to the body, because the panel they live in
+     scrolls and clips — a description cut off at the panel edge is worse than
+     no description. */
+  .doc-hold {
+    display: inline-flex;
+    min-width: 0;
+  }
+  .doc-tip {
+    position: fixed;
+    z-index: 120;
+    display: block;
     background: #000;
-    border: 1px solid var(--line2);
+    border: 1px solid var(--fg);
     color: var(--fg2);
-    padding: 2px 6px;
-    white-space: pre;
+    padding: 6px 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+    white-space: normal;
     pointer-events: none;
+  }
+  .doc-tip-title {
+    display: block;
+    color: var(--fg);
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    margin-bottom: 3px;
   }
 
   .caret::after {
@@ -1343,20 +1361,13 @@
     min-height: 40px;
   }
 
-  .mobile-sheet .tip {
+  /* A phone has no hover, so a description opens on tap and has to fit the
+     screen rather than sit beside a label. */
+  .doc-tip {
     z-index: 220;
-    width: min(300px, calc(100vw - 44px));
+    width: min(300px, calc(100vw - 44px)) !important;
     max-width: calc(100vw - 44px);
     padding: 8px;
-    white-space: normal;
-  }
-
-  .mobile-sheet .tip-frame {
-    display: none;
-  }
-
-  .mobile-sheet .tip-copy {
-    white-space: normal;
   }
 }
 
