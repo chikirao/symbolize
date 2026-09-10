@@ -187,24 +187,6 @@ export const ANIMATABLE_PARAMS: AnimatableParam[] = [
   n('edges.boost', 'EDGE BOOST', 'EDGES', 0, 2, 0.01, 2),
   b('edges.enabled', 'EDGE MODE', 'EDGES'),
 
-  /* --- zone: the selection driving parameters instead of hiding things --- */
-  n('zone.strength', 'ZONE STRENGTH', 'ZONE', 0, 1, 0.01, 2),
-  n('zone.sizeScale', 'ZONE SIZE', 'ZONE', 0, 3, 0.01, 2, 'elements', 'x'),
-  n('zone.opacityScale', 'ZONE OPACITY', 'ZONE', 0, 3, 0.01, 2, 'elements', 'x'),
-  n('zone.densityScale', 'ZONE DENSITY', 'ZONE', 0, 3, 0.01, 2, 'elements', 'x'),
-  a('zone.rotate', 'ZONE ROTATE', 'ZONE', -1080, 1080),
-  a('zone.hueShift', 'ZONE HUE', 'ZONE', -720, 720),
-  n('zone.saturation', 'ZONE SATURATION', 'ZONE', -1, 1, 0.01, 2),
-  n('zone.gradientOffset', 'ZONE GRADIENT', 'ZONE', -1, 1, 0.001, 3),
-  n('zone.motionAmount', 'ZONE MOTION', 'ZONE', 0, 200, 0.5, 1, 'elements', 'px'),
-  n('zone.edgeThickness', 'EDGE THICKNESS', 'ZONE', 0, 24, 0.5, 1, 'elements', 'px'),
-  n('zone.edgeSize', 'EDGE SIZE', 'ZONE', 0, 3, 0.01, 2, 'elements', 'x'),
-  n('zone.edgeOpacity', 'EDGE OPACITY', 'ZONE', 0, 3, 0.01, 2, 'elements', 'x'),
-  a('zone.edgeHue', 'EDGE HUE', 'ZONE', -720, 720),
-  b('zone.edgeOnly', 'EDGE ONLY', 'ZONE'),
-  b('zone.enabled', 'ZONE ON', 'ZONE'),
-  b('zone.outside', 'ZONE OUTSIDE', 'ZONE'),
-
   /* --- mask --- */
   n('mask.threshold', 'MASK THRESHOLD', 'MASK', 0, 1, 0.01, 2, 'topology'),
   n('mask.feather', 'MASK FEATHER', 'MASK', 0, 0.5, 0.005, 3, 'topology'),
@@ -227,6 +209,43 @@ export const ANIMATABLE_PARAMS: AnimatableParam[] = [
   b('layers.pattern.visible', 'SHOW PATTERN', 'LAYERS', 'cheap'),
 ]
 
+/**
+ * Zones are a fixed array, so their paths are generated rather than typed out
+ * three times. Each zone gets its own group, which is also how the ADD TRACK
+ * menu keeps its size: a caller can hide the groups whose zone is switched off.
+ */
+export const ZONE_GROUPS = ['ZONE 1', 'ZONE 2', 'ZONE 3']
+
+function zoneParams(index: number): AnimatableParam[] {
+  const g = ZONE_GROUPS[index]
+  const at = (name: string) => `zone.list.${index}.${name}`
+  // Labels carry the zone number because a timeline row shows the label alone:
+  // three tracks all reading "HUE" would be indistinguishable once added.
+  const z = `Z${index + 1} `
+  return [
+    n(at('strength'), z + 'STRENGTH', g, 0, 1, 0.01, 2, 'topology'),
+    n(at('tolerance'), z + 'TOLERANCE', g, 0.01, 1, 0.005, 3, 'topology'),
+    n(at('feather'), z + 'FEATHER', g, 0, 0.5, 0.005, 3, 'topology'),
+    n(at('sizeScale'), z + 'SIZE', g, 0, 3, 0.01, 2, 'elements', 'x'),
+    n(at('opacityScale'), z + 'OPACITY', g, 0, 3, 0.01, 2, 'elements', 'x'),
+    n(at('densityScale'), z + 'DENSITY', g, 0, 3, 0.01, 2, 'elements', 'x'),
+    a(at('rotate'), z + 'ROTATE', g, -1080, 1080),
+    a(at('hueShift'), z + 'HUE', g, -720, 720),
+    n(at('saturation'), z + 'SATURATION', g, -1, 1, 0.01, 2),
+    n(at('gradientOffset'), z + 'GRADIENT', g, -1, 1, 0.001, 3),
+    n(at('motionAmount'), z + 'MOTION', g, 0, 200, 0.5, 1, 'elements', 'px'),
+    n(at('edgeThickness'), z + 'EDGE THICKNESS', g, 0, 24, 0.5, 1, 'elements', 'px'),
+    n(at('edgeSize'), z + 'EDGE SIZE', g, 0, 3, 0.01, 2, 'elements', 'x'),
+    n(at('edgeOpacity'), z + 'EDGE OPACITY', g, 0, 3, 0.01, 2, 'elements', 'x'),
+    a(at('edgeHue'), z + 'EDGE HUE', g, -720, 720),
+    b(at('edgeOnly'), z + 'OUTLINE ONLY', g),
+    b(at('outside'), z + 'INVERT', g, 'topology'),
+    b(at('enabled'), z + 'ZONE ON', g, 'topology'),
+  ]
+}
+
+for (let i = 0; i < ZONE_GROUPS.length; i++) ANIMATABLE_PARAMS.push(...zoneParams(i))
+
 const BY_PATH = new Map(ANIMATABLE_PARAMS.map((p) => [p.path, p]))
 
 export function animatableFor(path: string): AnimatableParam | null {
@@ -238,9 +257,12 @@ export function isAnimatable(path: string): boolean {
 }
 
 /** Groups in registry order, for the ADD TRACK picker. */
-export function animatableGroups(): { group: string; params: AnimatableParam[] }[] {
+export function animatableGroups(
+  hidden?: Set<string>,
+): { group: string; params: AnimatableParam[] }[] {
   const out: { group: string; params: AnimatableParam[] }[] = []
   for (const p of ANIMATABLE_PARAMS) {
+    if (hidden?.has(p.group)) continue
     let bucket = out.find((g) => g.group === p.group)
     if (!bucket) {
       bucket = { group: p.group, params: [] }

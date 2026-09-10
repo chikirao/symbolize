@@ -1,4 +1,4 @@
-import type { EditorSettings, SourceMaps } from '../types/editor'
+import type { EditorSettings, SelectionConfig, SourceMaps } from '../types/editor'
 import { hexToRgb, rgbToHex } from './gradients'
 
 /**
@@ -66,7 +66,7 @@ export function sampleColourAt(maps: SourceMaps, nx: number, ny: number): string
 
 /* ------------------------------------------------------------------ */
 
-function buildColourRange(maps: SourceMaps, mask: EditorSettings['mask']): Uint8Array {
+function buildColourRange(maps: SourceMaps, mask: SelectionConfig): Uint8Array {
   const n = maps.width * maps.height
   const out = new Uint8Array(n)
   const targets = mask.picks.map((p) => hexToRgb(p.color))
@@ -89,7 +89,7 @@ function buildColourRange(maps: SourceMaps, mask: EditorSettings['mask']): Uint8
   return out
 }
 
-function buildWand(maps: SourceMaps, mask: EditorSettings['mask']): Uint8Array {
+function buildWand(maps: SourceMaps, mask: SelectionConfig): Uint8Array {
   const w = maps.width
   const h = maps.height
   const out = new Uint8Array(w * h)
@@ -166,9 +166,9 @@ function buildWand(maps: SourceMaps, mask: EditorSettings['mask']): Uint8Array {
  * each time even though the picks had not moved. A WeakMap gives every live
  * frame its own entry and lets them die with the frames they belong to.
  */
-let cache = new WeakMap<SourceMaps, { key: string; data: Uint8Array }>()
+let cache = new WeakMap<SourceMaps, Map<string, Uint8Array>>()
 
-function signature(mask: EditorSettings['mask']): string {
+function signature(mask: SelectionConfig): string {
   return [
     mask.tolerance.toFixed(4),
     mask.contiguous ? 'w' : 'g',
@@ -178,6 +178,7 @@ function signature(mask: EditorSettings['mask']): string {
 
 export function invalidateSelectionCache(): void {
   cache = new WeakMap()
+  edgeCache = new WeakMap()
 }
 
 /**
@@ -185,17 +186,85 @@ export function invalidateSelectionCache(): void {
  * not use colour selection. Cached: rebuilding it on every slider tick would
  * cost a full pass over the analysis maps.
  */
+export function buildSelection(maps: SourceMaps, config: SelectionConfig): Uint8Array | null {
+  if (config.picks.length === 0) return null
+  const key = signature(config)
+  let perMaps = cache.get(maps)
+  if (!perMaps) {
+    perMaps = new Map()
+    cache.set(maps, perMaps)
+  }
+  const hit = perMaps.get(key)
+  if (hit) return hit
+  const data = config.contiguous ? buildWand(maps, config) : buildColourRange(maps, config)
+  // several zones can be live at once on the same frame, each with its own
+  // signature, so this is a small map per frame rather than a single slot
+  if (perMaps.size > 8) perMaps.clear()
+  perMaps.set(key, data)
+  return data
+}
+
 export function getSelectionMask(
   maps: SourceMaps,
   mask: EditorSettings['mask'],
 ): Uint8Array | null {
-  if (mask.source !== 'color' || mask.picks.length === 0) return null
-  const key = signature(mask)
-  const hit = cache.get(maps)
-  if (hit && hit.key === key) return hit.data
-  const data = mask.contiguous ? buildWand(maps, mask) : buildColourRange(maps, mask)
-  cache.set(maps, { key, data })
-  return data
+  if (mask.source !== 'color') return null
+  return buildSelection(maps, mask)
+}
+
+let edgeCache = new WeakMap<SourceMaps, Map<string, Float32Array>>()
+
+/**
+ * Sobel over a selection field: the border of what was picked.
+ *
+ * Deliberately not the luminance edge map — a selected red jacket should
+ * outline the jacket, not every contrasty seam inside it. Same 0..1 shape as
+ * the luminance map so `sampleEdge` reads it unchanged.
+ */
+export function getSelectionEdge(
+  maps: SourceMaps,
+  config: SelectionConfig,
+): Float32Array | null {
+  const field = buildSelection(maps, config)
+  if (!field) return null
+  const key = signature(config)
+  let perMaps = edgeCache.get(maps)
+  if (!perMaps) {
+    perMaps = new Map()
+    edgeCache.set(maps, perMaps)
+  }
+  const hit = perMaps.get(key)
+  if (hit) return hit
+
+  const w = maps.width
+  const h = maps.height
+  const out = new Float32Array(w * h)
+  let max = 0
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x
+      const tl = field[i - w - 1]
+      const t = field[i - w]
+      const tr = field[i - w + 1]
+      const l = field[i - 1]
+      const r = field[i + 1]
+      const bl = field[i + w - 1]
+      const b = field[i + w]
+      const br = field[i + w + 1]
+      const gx = tr + 2 * r + br - (tl + 2 * l + bl)
+      const gy = bl + 2 * b + br - (tl + 2 * t + tr)
+      const m = Math.sqrt(gx * gx + gy * gy)
+      out[i] = m
+      if (m > max) max = m
+    }
+  }
+  if (max > 0) {
+    const inv = 1 / max
+    for (let i = 0; i < out.length; i++) out[i] *= inv
+  }
+  if (perMaps.size > 8) perMaps.clear()
+  perMaps.set(key, out)
+  return out
 }
 
 /** Averages the selection field over a cell footprint, like every other sample. */

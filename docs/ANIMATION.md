@@ -138,9 +138,10 @@ instead of only gating them. One selection, two uses, no second picker UI.
 
 ### Z3 — more zones, once video zones are cheap
 - [x] zone edge as its own thing: outline the selection with symbols, animate the outline
-- [ ] second and third zone (`zones[]` rather than one `zone`), each with its own picks and its
-      own overrides. One zone works end to end, so this is unblocked — it is just a bigger build
-      than the video work above it.
+- [x] second and third zone: `zone.list[3]`, each with its own picks, tolerance, feather and
+      overrides. Zones no longer ride on the mask — the mask went back to being purely a gate.
+      The panel shows one zone at a time behind a `[1](2)(3)` selector, and the ADD TRACK menu
+      hides the groups of zones nobody has picked a colour for, so neither grew.
 
 ### R2 — per-frame render cost
 - [ ] `patternTarget()` allocates a full-size canvas per frame when a blend or opacity is set —

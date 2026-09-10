@@ -1,9 +1,39 @@
-import type { EditorSettings, Preset } from '../types/editor'
+import type { EditorSettings, Preset, ZoneDef } from '../types/editor'
+import { ZONE_COUNT } from '../types/editor'
 import { DEFAULT_STOPS } from './gradients'
 import { ALL_SYMBOL_IDS } from './symbols'
 
 export function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v)) as T
+}
+
+export function defaultZone(): ZoneDef {
+  return {
+    enabled: false,
+    picks: [],
+    tolerance: 0.18,
+    contiguous: false,
+    feather: 0.06,
+    strength: 1,
+    outside: false,
+    sizeScale: 1,
+    opacityScale: 1,
+    densityScale: 1,
+    rotate: 0,
+    hueShift: 0,
+    saturation: 0,
+    gradientOffset: 0,
+    motionAmount: 0,
+    edgeThickness: 2,
+    edgeSize: 1,
+    edgeOpacity: 1,
+    edgeHue: 0,
+    edgeOnly: false,
+  }
+}
+
+function defaultZones(): ZoneDef[] {
+  return Array.from({ length: ZONE_COUNT }, defaultZone)
 }
 
 function enabledMap(ids: string[]): Record<string, boolean> {
@@ -90,24 +120,7 @@ export const DEFAULT_SETTINGS: EditorSettings = {
     contiguous: false,
     silhouette: { enabled: false, color: '#101010', opacity: 1 },
   },
-  zone: {
-    enabled: false,
-    strength: 1,
-    outside: false,
-    sizeScale: 1,
-    opacityScale: 1,
-    densityScale: 1,
-    rotate: 0,
-    hueShift: 0,
-    saturation: 0,
-    gradientOffset: 0,
-    motionAmount: 0,
-    edgeThickness: 2,
-    edgeSize: 1,
-    edgeOpacity: 1,
-    edgeHue: 0,
-    edgeOnly: false,
-  },
+  zone: { active: 0, list: defaultZones() },
   edges: { enabled: false, mode: 'both', threshold: 0.14, thickness: 2, contrast: 0.75, boost: 0.7 },
   random: { seed: 183742 },
   layers: {
@@ -315,6 +328,30 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
+/**
+ * The first version of zones was a single flat `zone` object riding on the
+ * mask's picks. Presets saved in that window would otherwise lose their zone
+ * entirely, since the shape no longer matches.
+ */
+function migrateZones(out: Record<string, unknown>, patch: Record<string, unknown>): void {
+  const saved = patch.zone
+  if (!isPlainObject(saved) || Array.isArray((saved as { list?: unknown }).list)) return
+  const zones = (out.zone as { active: number; list: ZoneDef[] }).list
+  const first = { ...zones[0] } as unknown as Record<string, unknown>
+  for (const key of Object.keys(saved)) {
+    if (key in first) first[key] = (saved as Record<string, unknown>)[key]
+  }
+  const mask = patch.mask
+  if (isPlainObject(mask)) {
+    // the old zone borrowed the mask's selection; give it its own copy
+    if (Array.isArray(mask.picks)) first.picks = mask.picks
+    if (typeof mask.tolerance === 'number') first.tolerance = mask.tolerance
+    if (typeof mask.contiguous === 'boolean') first.contiguous = mask.contiguous
+    if (typeof mask.feather === 'number') first.feather = mask.feather
+  }
+  zones[0] = first as unknown as ZoneDef
+}
+
 export function mergeSettings(base: EditorSettings, patch: unknown): EditorSettings {
   const out = clone(base) as unknown as Record<string, unknown>
   const walk = (dst: Record<string, unknown>, src: Record<string, unknown>) => {
@@ -325,7 +362,15 @@ export function mergeSettings(base: EditorSettings, patch: unknown): EditorSetti
       else if (sv !== undefined) dst[key] = sv
     }
   }
-  if (isPlainObject(patch)) walk(out, patch)
+  if (isPlainObject(patch)) {
+    migrateZones(out, patch)
+    walk(out, patch)
+    // the old flat shape must not leak back over the migrated array
+    if (isPlainObject(patch.zone) && !Array.isArray((patch.zone as { list?: unknown }).list)) {
+      const zone = out.zone as { active: number; list: ZoneDef[] }
+      out.zone = { active: 0, list: zone.list }
+    }
+  }
   return out as unknown as EditorSettings
 }
 

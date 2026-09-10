@@ -581,6 +581,14 @@
     background: #111;
   }
 
+  .zone-tabs {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
   /* --- keyframe marker on a parameter row ----------------------------- */
   .key-dot {
     color: var(--off);

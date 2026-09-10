@@ -1,22 +1,34 @@
 import React from 'react'
 import { useEditor } from '../store/editorStore'
+import { getPath } from '../store/path'
+import type { ColorPick } from '../types/editor'
 import { ColorField } from './Primitives'
+
+/** stable empty array so the selector does not hand back a new one each call */
+const EMPTY: ColorPick[] = []
 
 /**
  * Colour-selection controls: the eyedropper toggle, the list of picked colours
- * and the contiguous switch. Lives inside the MASK section.
+ * and the contiguous switch.
+ *
+ * The mask and each zone all own a selection of the same shape, so this is
+ * pointed at one of them by path prefix rather than hard-wired to the mask.
+ * The eyedropper writes to whichever picker armed it, which is what
+ * `view.pickTarget` records.
  */
-export function SelectionPicker() {
-  const picks = useEditor((s) => s.settings.mask.picks)
-  const contiguous = useEditor((s) => s.settings.mask.contiguous)
+export function SelectionPicker(props: { prefix?: string }) {
+  const prefix = props.prefix ?? 'mask'
+  const picks = useEditor((s) => getPath<ColorPick[]>(s.settings, prefix + '.picks') ?? EMPTY)
+  const contiguous = useEditor((s) => !!getPath<boolean>(s.settings, prefix + '.contiguous'))
   const tool = useEditor((s) => s.view.tool)
+  const pickTarget = useEditor((s) => s.view.pickTarget)
   const image = useEditor((s) => s.image)
   const setParam = useEditor((s) => s.setParam)
   const setView = useEditor((s) => s.setView)
-  const removeMaskPick = useEditor((s) => s.removeMaskPick)
-  const clearMaskPicks = useEditor((s) => s.clearMaskPicks)
+  const removePick = useEditor((s) => s.removePick)
+  const clearPicks = useEditor((s) => s.clearPicks)
 
-  const picking = tool === 'pick'
+  const picking = tool === 'pick' && pickTarget === prefix
 
   return (
     <div className="pl-3 mt-1">
@@ -27,7 +39,9 @@ export function SelectionPicker() {
           aria-pressed={picking}
           disabled={!image}
           title="click the canvas to sample a colour"
-          onClick={() => setView({ tool: picking ? 'pan' : 'pick' })}
+          onClick={() =>
+            setView(picking ? { tool: 'pan' } : { tool: 'pick', pickTarget: prefix })
+          }
         >
           {picking ? 'PICKING' : 'PICK COLOR'}
         </button>
@@ -35,7 +49,7 @@ export function SelectionPicker() {
           type="button"
           className="btn text-xxs"
           disabled={picks.length === 0}
-          onClick={clearMaskPicks}
+          onClick={() => clearPicks(prefix)}
         >
           CLEAR
         </button>
@@ -55,7 +69,7 @@ export function SelectionPicker() {
               ariaLabel={`selected colour ${i}`}
               onChange={(v) => {
                 const next = picks.map((q, j) => (j === i ? { ...q, color: v.toUpperCase() } : q))
-                setParam('mask.picks', next)
+                setParam(prefix + '.picks', next)
               }}
             />
             <span className="text-fg3 text-xxs ml-auto shrink-0 tabular-nums">
@@ -65,7 +79,7 @@ export function SelectionPicker() {
               type="button"
               className="text-fg3 hover:text-fg text-xxs shrink-0 pl-1"
               aria-label={`remove pick ${i}`}
-              onClick={() => removeMaskPick(i)}
+              onClick={() => removePick(prefix, i)}
             >
               [x]
             </button>
@@ -86,7 +100,7 @@ export function SelectionPicker() {
         aria-checked={contiguous}
         className="tog text-xxs mt-1 block"
         title="magic wand: keep only the area connected to the click"
-        onClick={() => setParam('mask.contiguous', !contiguous)}
+        onClick={() => setParam(prefix + '.contiguous', !contiguous)}
       >
         {contiguous ? '[x]' : '[ ]'} CONTIGUOUS (WAND)
       </button>

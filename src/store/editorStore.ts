@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type {
+  ColorPick,
   CustomSymbolDef,
   EditorSettings,
   LoadedImage,
@@ -62,6 +63,8 @@ export interface ViewState {
   fitToken: number // bump to request a fit-to-screen
   /** pan drags the canvas; pick samples a colour for the selection mask */
   tool: 'pan' | 'pick'
+  /** settings prefix the eyedropper writes into: 'mask' or 'zone.list.N' */
+  pickTarget: string
 }
 
 export interface StatusState {
@@ -109,9 +112,9 @@ interface EditorStore {
   saveCurrentPreset: (name: string) => void
   deletePreset: (id: string) => void
 
-  addMaskPick: (nx: number, ny: number) => void
-  removeMaskPick: (index: number) => void
-  clearMaskPicks: () => void
+  addPick: (nx: number, ny: number) => void
+  removePick: (prefix: string, index: number) => void
+  clearPicks: (prefix: string) => void
 
   randomizeSeed: () => void
   setView: (patch: Partial<ViewState>) => void
@@ -143,6 +146,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
     quality: 'high',
     fitToken: 0,
     tool: 'pan',
+    pickTarget: 'mask',
   },
   status: { kind: 'ready', message: 'READY', progress: -1 },
   stats: null,
@@ -360,38 +364,49 @@ export const useEditor = create<EditorStore>((set, get) => ({
     saveUserPresets(presets.filter((p) => !p.builtin))
   },
 
-  addMaskPick: (nx, ny) => {
+  /**
+   * The eyedropper writes wherever `view.pickTarget` points — the mask, or one
+   * of the zones. Picking is always a statement of intent, so it also switches
+   * on whatever it just fed.
+   */
+  addPick: (nx, ny) => {
     const maps = get().maps
     if (!maps) return
     const color = sampleColourAt(maps, nx, ny)
+    const prefix = get().view.pickTarget
     set((s) => {
       const settings = clone(s.settings)
-      settings.mask.picks = [...settings.mask.picks, { color, x: nx, y: ny }]
-      // picking a colour is a clear intent: turn the mask on and point it here
-      settings.mask.enabled = true
-      settings.mask.source = 'color'
+      const picks = getPath<ColorPick[]>(settings, prefix + '.picks') || []
+      let next = setPath(settings, prefix + '.picks', [...picks, { color, x: nx, y: ny }])
+      if (prefix === 'mask') {
+        next = setPath(next, 'mask.enabled', true)
+        next = setPath(next, 'mask.source', 'color')
+      } else {
+        next = setPath(next, prefix + '.enabled', true)
+      }
       return {
-        settings,
+        settings: next,
         activePresetId: null,
         status: { kind: 'ready' as const, message: 'PICKED ' + color, progress: -1 },
       }
     })
   },
 
-  removeMaskPick: (index) => {
+  removePick: (prefix, index) => {
     set((s) => {
-      const settings = clone(s.settings)
-      settings.mask.picks = settings.mask.picks.filter((_, i) => i !== index)
-      return { settings, activePresetId: null }
+      const picks = getPath<ColorPick[]>(s.settings, prefix + '.picks') || []
+      return {
+        settings: setPath(s.settings, prefix + '.picks', picks.filter((_, i) => i !== index)),
+        activePresetId: null,
+      }
     })
   },
 
-  clearMaskPicks: () => {
-    set((s) => {
-      const settings = clone(s.settings)
-      settings.mask.picks = []
-      return { settings, activePresetId: null }
-    })
+  clearPicks: (prefix) => {
+    set((s) => ({
+      settings: setPath(s.settings, prefix + '.picks', []),
+      activePresetId: null,
+    }))
   },
 
   randomizeSeed: () => {

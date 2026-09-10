@@ -265,7 +265,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
     if (view.tool === 'pick' && e.button === 0) {
       const uv = toImageUV(e.clientX, e.clientY)
       if (uv) {
-        useEditor.getState().addMaskPick(uv[0], uv[1])
+        useEditor.getState().addPick(uv[0], uv[1])
         return
       }
     }

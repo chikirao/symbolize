@@ -5,6 +5,7 @@ import type {
   RenderStats,
   SourceMaps,
   TextSymbolDef,
+  ZoneDef,
 } from '../types/editor'
 import { buildGrid, type Cell } from './grid'
 import { sampleCell, sampleEdge } from './sampling'
@@ -14,7 +15,7 @@ import { applyAdjust, buildGradientLUT, hexToRgb, LUT_SIZE } from './gradients'
 import { SYMBOL_MAP, type SymbolDef } from './symbols'
 import { getTinted } from './tint'
 import { drawTextSymbol } from './textSymbols'
-import { getSelectionMask, sampleSelection } from './selection'
+import { buildSelection, getSelectionEdge, getSelectionMask, sampleSelection } from './selection'
 
 /* ------------------------------------------------------------------ */
 /* small helpers                                                       */
@@ -211,16 +212,36 @@ export function calculateElements(
   const densitySoft = settings.density.softness
 
   // The zone rides on the mask's field, so it needs a selection to exist at all.
-  const zoneOn = zn.enabled && mk.enabled && zn.strength > 0.001
-  const zoneTintsColour = zoneOn && (zn.hueShift !== 0 || zn.saturation !== 0)
   const zoneAdj = { hueShift: 0, saturation: 0, brightness: 0 }
 
-  // The outline is only built when something actually asks for it: it is a
-  // Sobel pass over the mask field and nobody should pay for it by default.
-  const zoneEdgeOn =
-    zoneOn &&
-    (zn.edgeOnly || zn.edgeSize !== 1 || zn.edgeOpacity !== 1 || zn.edgeHue !== 0)
-  const zoneEdgeField = zoneEdgeOn ? maskEdgeField(maps, mk) : null
+  /**
+   * Zones are resolved once per render, not once per cell. A zone with no
+   * picks, no strength or switched off simply is not here, so the per-cell
+   * loop below costs nothing when nobody is using them. The outline field is
+   * a second Sobel pass and is only built when a zone actually asks for one.
+   */
+  interface LiveZone {
+    def: ZoneDef
+    field: Uint8Array
+    edge: Float32Array | null
+    tints: boolean
+  }
+  const liveZones: LiveZone[] = []
+  for (const def of zn.list) {
+    if (!def.enabled || def.strength <= 0.001 || def.picks.length === 0) continue
+    const field = buildSelection(maps, def)
+    if (!field) continue
+    const wantsEdge =
+      def.edgeOnly || def.edgeSize !== 1 || def.edgeOpacity !== 1 || def.edgeHue !== 0
+    liveZones.push({
+      def,
+      field,
+      edge: wantsEdge ? getSelectionEdge(maps, def) : null,
+      tints: def.hueShift !== 0 || def.saturation !== 0,
+    })
+  }
+  const zonesLive = liveZones.length > 0
+  const edgeOnlyZones = liveZones.filter((z) => z.def.edgeOnly).length
 
   // A reveal at full amount is the resting state, and skipping it there keeps
   // every still image on exactly the path it was on before reveal existed.
@@ -235,7 +256,7 @@ export function calculateElements(
     mo.amplitudeX !== 0 ||
     mo.amplitudeY !== 0 ||
     mo.swirl !== 0 ||
-    (zn.enabled && mk.enabled && zn.motionAmount !== 0)
+    zn.list.some((z) => z.enabled && z.motionAmount !== 0 && z.picks.length > 0)
   const motionPhase = mo.phase * Math.PI * 2
   const motionFreq = Math.max(0.01, mo.frequency)
 
@@ -270,13 +291,11 @@ export function calculateElements(
     const sg = wantDominant ? sample.dg : sample.g
     const sb = wantDominant ? sample.db : sample.b
 
-    // ---- mask / zone -------------------------------------------------
-    // One selection, two jobs. GATE deletes what falls outside it, the way it
-    // always has. SELECT keeps every cell and the field only says how strongly
-    // the ZONE overrides bite here — which is what makes "pick the jacket and
-    // animate the jacket" a single selection rather than two.
+    // ---- mask -------------------------------------------------------
+    // The mask gates: GATE deletes what falls outside it, SELECT keeps every
+    // cell and only shapes the silhouette and clip layers. Zones no longer
+    // ride on it — they carry their own selections.
     let maskF = 1
-    let zoneF = 0
     const gating = mk.enabled && mk.mode === 'gate'
     if (mk.enabled) {
       const sel = selection ? sampleSelection(maps, selection, cell.x, cell.y, cell.cw, cell.ch) : 0
@@ -288,7 +307,6 @@ export function calculateElements(
             : 0
           : smoothstep(mk.threshold - mk.feather, mk.threshold + mk.feather, mv)
       if (mk.invert) f = 1 - f
-      zoneF = f
       if (gating) {
         maskF = f
         if (maskF <= 0.001) continue
@@ -297,18 +315,62 @@ export function calculateElements(
     // fully transparent source pixels never produce symbols
     if (!gating && rawAlpha <= 0.004) continue
 
-    // how hard the zone overrides bite in this cell
-    const zw = zoneOn ? (zn.outside ? 1 - zoneF : zoneF) * zn.strength : 0
-    const zoneBites = zw > 0.002
+    // ---- zones ------------------------------------------------------
+    // Every live zone contributes to the same set of accumulators, so two
+    // zones overlapping compose instead of one winning.
+    let zDensity = 1
+    let zSize = 1
+    let zOpacity = 1
+    let zRotate = 0
+    let zMotion = 0
+    let zGradient = 0
+    let zHue = 0
+    let zSat = 0
+    let onSomeEdge = false
 
-    // ...and how close it sits to the selection's border. The outline ignores
-    // INVERT ZONE on purpose: an edge is an edge from either side of it.
-    let ew = 0
-    if (zoneEdgeField) {
-      ew = clamp01(sampleEdge(maps, zoneEdgeField, cell.x, cell.y, zn.edgeThickness)) * zn.strength
-      if (zn.edgeOnly && ew <= 0.02) continue
+    if (zonesLive) {
+      for (let li = 0; li < liveZones.length; li++) {
+        const lz = liveZones[li]
+        const d = lz.def
+        const raw = sampleSelection(maps, lz.field, cell.x, cell.y, cell.cw, cell.ch)
+        const f =
+          d.feather <= 0.0005
+            ? raw >= 0.5
+              ? 1
+              : 0
+            : smoothstep(0.5 - d.feather, 0.5 + d.feather, raw)
+        const w = (d.outside ? 1 - f : f) * d.strength
+
+        // The outline ignores OUTSIDE on purpose: an edge is an edge from
+        // either side of it.
+        let ew = 0
+        if (lz.edge) {
+          ew = clamp01(sampleEdge(maps, lz.edge, cell.x, cell.y, d.edgeThickness)) * d.strength
+          if (d.edgeOnly && ew > 0.02) onSomeEdge = true
+        }
+
+        if (w > 0.002) {
+          if (d.densityScale !== 1) zDensity *= 1 + (d.densityScale - 1) * w
+          if (d.sizeScale !== 1) zSize *= 1 + (d.sizeScale - 1) * w
+          if (d.opacityScale !== 1) zOpacity *= 1 + (d.opacityScale - 1) * w
+          if (d.rotate !== 0) zRotate += d.rotate * w
+          if (d.motionAmount !== 0) zMotion += d.motionAmount * w
+          if (d.gradientOffset !== 0) zGradient += d.gradientOffset * w
+          if (lz.tints) {
+            zHue += d.hueShift * w
+            zSat += d.saturation * w
+          }
+        }
+        if (ew > 0.002) {
+          if (d.edgeSize !== 1) zSize *= 1 + (d.edgeSize - 1) * ew
+          if (d.edgeOpacity !== 1) zOpacity *= 1 + (d.edgeOpacity - 1) * ew
+          if (d.edgeHue !== 0) zHue += d.edgeHue * ew
+        }
+      }
+      // With OUTLINE ONLY armed anywhere, a cell has to be on at least one of
+      // those outlines to survive — the union, so several outlines compose.
+      if (edgeOnlyZones > 0 && !onSomeEdge) continue
     }
-    const edgeBites = ew > 0.002
 
     // ---- levels -----------------------------------------------------
     const v = applyLevels(sourceValue(rawLum, rawAlpha, settings.source.mode), settings.source)
@@ -371,7 +433,7 @@ export function calculateElements(
     if (settings.density.mode === 'dark') p *= 1 - v
     else if (settings.density.mode === 'light') p *= v
     if (edgeMap && ed.mode !== 'inside') p *= 1 + edgeF * ed.boost
-    if (zoneBites && zn.densityScale !== 1) p *= 1 + (zn.densityScale - 1) * zw
+    if (zDensity !== 1) p *= zDensity
     let densityF = 1
     if (p < 1) {
       if (densitySoft <= 0.001) {
@@ -424,8 +486,7 @@ export function calculateElements(
     if (edgeMap && ed.mode !== 'inside') size *= 1 + edgeF * ed.boost * 0.5
     if (revealF < 0.999) size *= lerp(0.35, 1, revealF)
     if (densityF < 0.999) size *= lerp(0.25, 1, densityF)
-    if (zoneBites && zn.sizeScale !== 1) size *= 1 + (zn.sizeScale - 1) * zw
-    if (edgeBites && zn.edgeSize !== 1) size *= 1 + (zn.edgeSize - 1) * ew
+    if (zSize !== 1) size *= zSize
     if (sz.clamp) size = Math.min(size, Math.min(cell.cw, cell.ch) * 1.25)
     if (size <= 0.05) continue
 
@@ -450,7 +511,7 @@ export function calculateElements(
         rot = rt.base
     }
     if (rt.jitter > 0) rot += (rRot - 0.5) * 2 * rt.jitter
-    if (zoneBites && zn.rotate !== 0) rot += zn.rotate * zw
+    if (zRotate !== 0) rot += zRotate
 
     // ---- opacity ----------------------------------------------------
     let alpha: number
@@ -464,8 +525,7 @@ export function calculateElements(
     alpha *= thF
     if (mk.enabled) alpha *= maskF
     alpha *= revealF * densityF
-    if (zoneBites && zn.opacityScale !== 1) alpha *= 1 + (zn.opacityScale - 1) * zw
-    if (edgeBites && zn.edgeOpacity !== 1) alpha *= 1 + (zn.edgeOpacity - 1) * ew
+    if (zOpacity !== 1) alpha *= zOpacity
     alpha = clamp01(alpha)
     if (alpha <= 0.004) continue
 
@@ -503,8 +563,7 @@ export function calculateElements(
         } else t = v
         // gradientOffset rolls the LUT round, which is what turns a static
         // ramp into a travelling one; a non-cyclic gradient shows a seam.
-        const rollOffset =
-          gradientOffset + (zoneBites ? zn.gradientOffset * zw : 0)
+        const rollOffset = gradientOffset + zGradient
         let slot = Math.round(clamp01(t) * (LUT_SIZE - 1) + rollOffset * LUT_SIZE)
         slot = ((slot % LUT_SIZE) + LUT_SIZE) % LUT_SIZE
         const li = slot * 3
@@ -515,12 +574,9 @@ export function calculateElements(
     }
     // The zone recolours whatever the colour mode produced, so it works the
     // same on a solid fill, a gradient and colours sampled from the photo.
-    const tintsHere = (zoneTintsColour && zoneBites) || (edgeBites && zn.edgeHue !== 0)
-    if (tintsHere) {
-      zoneAdj.hueShift =
-        (zoneTintsColour && zoneBites ? zn.hueShift * zw : 0) +
-        (edgeBites ? zn.edgeHue * ew : 0)
-      zoneAdj.saturation = zoneTintsColour && zoneBites ? zn.saturation * zw : 0
+    if (zHue !== 0 || zSat !== 0) {
+      zoneAdj.hueShift = zHue
+      zoneAdj.saturation = zSat < -1 ? -1 : zSat > 1 ? 1 : zSat
       applyAdjust(cr, cg, cb, zoneAdj, tmpColor)
       cr = tmpColor[0]
       cg = tmpColor[1]
@@ -542,9 +598,8 @@ export function calculateElements(
     if (motionOn) {
       // Zone motion is added, not scaled: making just the jacket ripple must
       // not require turning on a whole-frame wave first.
-      const zoneAdd = zoneBites ? zn.motionAmount * zw : 0
-      const ampX = mo.amplitudeX + zoneAdd
-      const ampY = mo.amplitudeY + zoneAdd
+      const ampX = mo.amplitudeX + zMotion
+      const ampY = mo.amplitudeY + zMotion
       if (mo.swirl !== 0) {
         const dx = px - cxCentre
         const dy = py - cyCentre
@@ -769,51 +824,6 @@ function maskField(maps: SourceMaps, mk: EditorSettings['mask']): Uint8Array {
   return data
 }
 
-let edgeFieldCache = new WeakMap<SourceMaps, { key: string; data: Float32Array }>()
-
-/**
- * Sobel over the mask field: where the selection starts and stops.
- *
- * Built from `maskField` rather than from luminance, so it is the border of
- * *what you picked* — which is the thing worth outlining. Same 0..1 shape as
- * the luminance edge map, so `sampleEdge` reads it unchanged.
- */
-function maskEdgeField(maps: SourceMaps, mk: EditorSettings['mask']): Float32Array {
-  const key = maskKey(maps, mk)
-  const hit = edgeFieldCache.get(maps)
-  if (hit && hit.key === key) return hit.data
-
-  const field = maskField(maps, mk)
-  const w = maps.width
-  const h = maps.height
-  const out = new Float32Array(w * h)
-  let max = 0
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const i = y * w + x
-      const tl = field[i - w - 1]
-      const t = field[i - w]
-      const tr = field[i - w + 1]
-      const l = field[i - 1]
-      const r = field[i + 1]
-      const bl = field[i + w - 1]
-      const b = field[i + w]
-      const br = field[i + w + 1]
-      const gx = tr + 2 * r + br - (tl + 2 * l + bl)
-      const gy = bl + 2 * b + br - (tl + 2 * t + tr)
-      const m = Math.sqrt(gx * gx + gy * gy)
-      out[i] = m
-      if (m > max) max = m
-    }
-  }
-  if (max > 0) {
-    const inv = 1 / max
-    for (let i = 0; i < out.length; i++) out[i] *= inv
-  }
-  edgeFieldCache.set(maps, { key, data: out })
-  return out
-}
-
 function fieldToCanvas(
   maps: SourceMaps,
   field: Uint8Array,
@@ -863,7 +873,6 @@ export function invalidateSilhouetteCache(): void {
   silCache = new WeakMap()
   alphaCache = new WeakMap()
   fieldCache = new WeakMap()
-  edgeFieldCache = new WeakMap()
 }
 
 /* ------------------------------------------------------------------ */

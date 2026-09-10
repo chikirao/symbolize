@@ -37,11 +37,14 @@ const ease = (at: number, value: KeyValue, easing: Easing = 'in-out'): PresetKey
   easing,
 })
 
-/** Every zone preset needs the selection switched on and set to SELECT. */
+/**
+ * Zone presets drive zone 1. They switch it on but cannot pick a colour for
+ * you — a zone with nothing picked contributes nothing, so the preset simply
+ * waits until you have used the eyedropper.
+ */
+const Z1 = 'zone.list.0.'
 const ZONE_ON: PresetTrack[] = [
-  { path: 'mask.enabled', keys: [{ at: 0, value: 'true', easing: 'hold' }] },
-  { path: 'mask.mode', keys: [{ at: 0, value: 'select', easing: 'hold' }] },
-  { path: 'zone.enabled', keys: [{ at: 0, value: 'true', easing: 'hold' }] },
+  { path: Z1 + 'enabled', keys: [{ at: 0, value: 'true', easing: 'hold' }] },
 ]
 
 export const ANIM_PRESETS: AnimPreset[] = [
@@ -51,9 +54,9 @@ export const ANIM_PRESETS: AnimPreset[] = [
     note: 'the picked zone swells and settles, the rest holds still',
     tracks: [
       ...ZONE_ON,
-      { path: 'zone.strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
-      { path: 'zone.sizeScale', keys: [ease(0, 1), ease(0.5, 1.9), ease(1, 1)] },
-      { path: 'zone.densityScale', keys: [ease(0, 1), ease(0.5, 1.35), ease(1, 1)] },
+      { path: Z1 + 'strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
+      { path: Z1 + 'sizeScale', keys: [ease(0, 1), ease(0.5, 1.9), ease(1, 1)] },
+      { path: Z1 + 'densityScale', keys: [ease(0, 1), ease(0.5, 1.35), ease(1, 1)] },
     ],
   },
   {
@@ -62,9 +65,9 @@ export const ANIM_PRESETS: AnimPreset[] = [
     note: 'colour runs a full turn inside the zone only',
     tracks: [
       ...ZONE_ON,
-      { path: 'zone.strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
+      { path: Z1 + 'strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
       {
-        path: 'zone.hueShift',
+        path: Z1 + 'hueShift',
         keys: [
           { at: 0, value: 0, easing: 'linear' },
           { at: 1, value: 360, easing: 'linear' },
@@ -78,10 +81,10 @@ export const ANIM_PRESETS: AnimPreset[] = [
     note: 'the zone comes loose and drifts while everything else stays put',
     tracks: [
       ...ZONE_ON,
-      { path: 'zone.strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
+      { path: Z1 + 'strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
       { path: 'motion.mode', keys: [{ at: 0, value: 'noise', easing: 'hold' }] },
       { path: 'motion.frequency', keys: [{ at: 0, value: 2.4, easing: 'linear' }] },
-      { path: 'zone.motionAmount', keys: [ease(0, 0), ease(0.5, 22), ease(1, 0)] },
+      { path: Z1 + 'motionAmount', keys: [ease(0, 0), ease(0.5, 22), ease(1, 0)] },
       {
         path: 'motion.phase',
         keys: [
@@ -97,12 +100,12 @@ export const ANIM_PRESETS: AnimPreset[] = [
     note: 'only the border of the selection, with colour running along it',
     tracks: [
       ...ZONE_ON,
-      { path: 'zone.strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
-      { path: 'zone.edgeOnly', keys: [{ at: 0, value: 'true', easing: 'hold' }] },
-      { path: 'zone.edgeSize', keys: [{ at: 0, value: 1.6, easing: 'linear' }] },
-      { path: 'zone.edgeThickness', keys: [ease(0, 1.5), ease(0.5, 6), ease(1, 1.5)] },
+      { path: Z1 + 'strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
+      { path: Z1 + 'edgeOnly', keys: [{ at: 0, value: 'true', easing: 'hold' }] },
+      { path: Z1 + 'edgeSize', keys: [{ at: 0, value: 1.6, easing: 'linear' }] },
+      { path: Z1 + 'edgeThickness', keys: [ease(0, 1.5), ease(0.5, 6), ease(1, 1.5)] },
       {
-        path: 'zone.edgeHue',
+        path: Z1 + 'edgeHue',
         keys: [
           { at: 0, value: 0, easing: 'linear' },
           { at: 1, value: 360, easing: 'linear' },
@@ -116,12 +119,12 @@ export const ANIM_PRESETS: AnimPreset[] = [
     note: 'everything but the zone drains to grey and steps back',
     tracks: [
       ...ZONE_ON,
-      { path: 'zone.outside', keys: [{ at: 0, value: 'true', easing: 'hold' }] },
-      { path: 'zone.saturation', keys: [{ at: 0, value: -1, easing: 'linear' }] },
-      { path: 'zone.opacityScale', keys: [{ at: 0, value: 0.4, easing: 'linear' }] },
-      { path: 'zone.sizeScale', keys: [{ at: 0, value: 0.7, easing: 'linear' }] },
+      { path: Z1 + 'outside', keys: [{ at: 0, value: 'true', easing: 'hold' }] },
+      { path: Z1 + 'saturation', keys: [{ at: 0, value: -1, easing: 'linear' }] },
+      { path: Z1 + 'opacityScale', keys: [{ at: 0, value: 0.4, easing: 'linear' }] },
+      { path: Z1 + 'sizeScale', keys: [{ at: 0, value: 0.7, easing: 'linear' }] },
       {
-        path: 'zone.strength',
+        path: Z1 + 'strength',
         keys: [
           { at: 0, value: 0, easing: 'out' },
           { at: 0.6, value: 1, easing: 'linear' },

@@ -22,6 +22,11 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
   const settings = useEditor((s) => s.settings)
   const setParam = useEditor((s) => s.setParam)
 
+  const zoneIndex = Math.max(0, Math.min(settings.zone.list.length - 1, settings.zone.active))
+  const zone = settings.zone.list[zoneIndex]
+  const zp = `zone.list.${zoneIndex}`
+  const activeZones = settings.zone.list.filter((z) => z.enabled && z.picks.length > 0).length
+
   const colorMode = settings.color.mode
   const usesGradient =
     colorMode === 'luminance-gradient' ||
@@ -439,39 +444,69 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
       </Section>
 
       {/* ---------------- ZONE ---------------- */}
-      <Section id="zone" title="ZONE" open={isOpen('zone')} onToggle={toggle}>
+      <Section
+        id="zone"
+        title="ZONE"
+        open={isOpen('zone')}
+        onToggle={toggle}
+        badge={activeZones > 0 ? activeZones + ' ON' : undefined}
+      >
+        {/* One zone on screen at a time. Three zones' worth of controls at
+            once would triple this panel for a feature most images use once. */}
+        <div className="zone-tabs pl-3">
+          {settings.zone.list.map((z, i) => (
+            <button
+              key={i}
+              type="button"
+              className={'btn text-xs2 ' + (i === zoneIndex ? 'is-on' : '')}
+              aria-pressed={i === zoneIndex}
+              title={'edit zone ' + (i + 1)}
+              onClick={() => setParam('zone.active', i)}
+            >
+              {z.enabled ? '[' + (i + 1) + ']' : '(' + (i + 1) + ')'}
+            </button>
+          ))}
+          <span className="text-fg3 text-xxs ml-1">
+            {zone.enabled ? 'ON' : 'OFF'} :: {zone.picks.length} PICKED
+          </span>
+        </div>
+
         <ParamToggle
-          path="zone.enabled"
+          path={zp + '.enabled'}
           label="ZONE ON"
-          hint="the selection drives these instead of hiding what is outside it"
+          hint="this zone drives the parameters below inside its own selection"
         />
-        <ParamToggle path="zone.outside" label="INVERT ZONE" hint="apply to everything the selection misses" />
-        <ParamSlider path="zone.strength" label="STRENGTH" min={0} max={1} step={0.01} decimals={2} />
+        <SelectionPicker prefix={zp} />
+        <ParamSlider path={zp + '.tolerance'} label="TOLERANCE" min={0.01} max={1} step={0.005} decimals={3} />
+        <ParamSlider path={zp + '.feather'} label="FEATHER" min={0} max={0.5} step={0.005} decimals={3} />
+        <ParamToggle path={zp + '.outside'} label="INVERT ZONE" hint="apply to everything the selection misses" />
+        <ParamSlider path={zp + '.strength'} label="STRENGTH" min={0} max={1} step={0.01} decimals={2} />
+
         <div className="hr text-xxs my-1 select-none">── INSIDE THE ZONE {'─'.repeat(34)}</div>
-        <ParamSlider path="zone.sizeScale" label="SIZE" min={0} max={3} step={0.01} decimals={2} suffix="x" />
-        <ParamSlider path="zone.opacityScale" label="OPACITY" min={0} max={3} step={0.01} decimals={2} suffix="x" />
-        <ParamSlider path="zone.densityScale" label="DENSITY" min={0} max={3} step={0.01} decimals={2} suffix="x" />
-        <ParamSlider path="zone.rotate" label="ROTATE" min={-360} max={360} step={1} decimals={0} suffix="d" />
-        <ParamSlider path="zone.hueShift" label="HUE" min={-360} max={360} step={1} decimals={0} suffix="d" />
-        <ParamSlider path="zone.saturation" label="SATURATION" min={-1} max={1} step={0.01} decimals={2} />
-        <ParamSlider path="zone.gradientOffset" label="GRADIENT" min={-1} max={1} step={0.001} decimals={3} />
-        <ParamSlider path="zone.motionAmount" label="MOTION" min={0} max={200} step={0.5} decimals={1} suffix="px" />
+        <ParamSlider path={zp + '.sizeScale'} label="SIZE" min={0} max={3} step={0.01} decimals={2} suffix="x" />
+        <ParamSlider path={zp + '.opacityScale'} label="OPACITY" min={0} max={3} step={0.01} decimals={2} suffix="x" />
+        <ParamSlider path={zp + '.densityScale'} label="DENSITY" min={0} max={3} step={0.01} decimals={2} suffix="x" />
+        <ParamSlider path={zp + '.rotate'} label="ROTATE" min={-360} max={360} step={1} decimals={0} suffix="d" />
+        <ParamSlider path={zp + '.hueShift'} label="HUE" min={-360} max={360} step={1} decimals={0} suffix="d" />
+        <ParamSlider path={zp + '.saturation'} label="SATURATION" min={-1} max={1} step={0.01} decimals={2} />
+        <ParamSlider path={zp + '.gradientOffset'} label="GRADIENT" min={-1} max={1} step={0.001} decimals={3} />
+        <ParamSlider path={zp + '.motionAmount'} label="MOTION" min={0} max={200} step={0.5} decimals={1} suffix="px" />
+
         <div className="hr text-xxs my-1 select-none">── OUTLINE {'─'.repeat(38)}</div>
         <ParamToggle
-          path="zone.edgeOnly"
+          path={zp + '.edgeOnly'}
           label="OUTLINE ONLY"
           hint="keep just the border of the selection and drop everything else"
         />
-        <ParamSlider path="zone.edgeThickness" label="THICKNESS" min={0} max={24} step={0.5} decimals={1} suffix="px" />
-        <ParamSlider path="zone.edgeSize" label="EDGE SIZE" min={0} max={3} step={0.01} decimals={2} suffix="x" />
-        <ParamSlider path="zone.edgeOpacity" label="EDGE OPACITY" min={0} max={3} step={0.01} decimals={2} suffix="x" />
-        <ParamSlider path="zone.edgeHue" label="EDGE HUE" min={-360} max={360} step={1} decimals={0} suffix="d" />
+        <ParamSlider path={zp + '.edgeThickness'} label="THICKNESS" min={0} max={24} step={0.5} decimals={1} suffix="px" />
+        <ParamSlider path={zp + '.edgeSize'} label="EDGE SIZE" min={0} max={3} step={0.01} decimals={2} suffix="x" />
+        <ParamSlider path={zp + '.edgeOpacity'} label="EDGE OPACITY" min={0} max={3} step={0.01} decimals={2} suffix="x" />
+        <ParamSlider path={zp + '.edgeHue'} label="EDGE HUE" min={-360} max={360} step={1} decimals={0} suffix="d" />
+
         <div className="pl-3 text-xxs text-fg3 mt-1 leading-snug">
-          {settings.mask.enabled
-            ? settings.mask.mode === 'select'
-              ? 'ZONE FOLLOWS THE MASK SELECTION :: EVERY SLIDER HERE IS ANIMATABLE.'
-              : 'MASK MODE IS GATE :: THE ZONE WORKS, BUT EVERYTHING OUTSIDE IS ALSO HIDDEN.'
-            : 'TURN THE MASK ON AND PICK A COLOUR FIRST :: THE ZONE RIDES ON THAT SELECTION.'}
+          {zone.picks.length === 0
+            ? 'PICK A COLOUR ABOVE :: A ZONE WITH NOTHING PICKED DOES NOTHING.'
+            : 'EACH ZONE HAS ITS OWN PICK AND ITS OWN OVERRIDES :: OVERLAPPING ZONES COMPOSE.'}
         </div>
       </Section>
 

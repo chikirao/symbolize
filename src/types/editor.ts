@@ -48,6 +48,56 @@ export interface GradientStop {
   color: string // #rrggbb
 }
 
+/** Everything needed to turn picked colours into a 0..1 field. */
+export interface SelectionConfig {
+  picks: ColorPick[]
+  /** how far a pixel may sit from a picked colour and still count (0..1) */
+  tolerance: number
+  /** magic wand: keep only the region connected to the pick */
+  contiguous: boolean
+}
+
+/**
+ * One picked region and what it does to the cells it covers.
+ *
+ * A zone carries its own selection rather than borrowing the mask's, so three
+ * of them can pick three different colours and treat each differently. Every
+ * override is weighted by the zone's own soft field, which is why a feathered
+ * pick gives a feathered effect.
+ */
+export interface ZoneDef extends SelectionConfig {
+  enabled: boolean
+  /** softness of this zone's own field, 0..0.5 */
+  feather: number
+  /** 0..1 master weight over every override below */
+  strength: number
+  /** apply to everything the selection does *not* cover */
+  outside: boolean
+  sizeScale: number // multiplier inside the zone
+  opacityScale: number
+  densityScale: number
+  rotate: number // degrees added inside the zone
+  hueShift: number // degrees
+  saturation: number // -1..1
+  gradientOffset: number // -1..1, rolls the LUT inside the zone only
+  motionAmount: number // image px of displacement added inside the zone
+  /** the border of the selection, treated as its own thing */
+  edgeThickness: number // image px the outline reaches
+  edgeSize: number // multiplier on cells sitting on the border
+  edgeOpacity: number
+  edgeHue: number // degrees
+  /** keep only the outline and drop everything else */
+  edgeOnly: boolean
+}
+
+export const ZONE_COUNT = 3
+
+export interface EditorSettingsZones {
+  /** which zone the panel and the eyedropper are pointed at */
+  active: number
+  list: ZoneDef[]
+}
+
 export interface EditorSettings {
   grid: {
     mode: GridMode
@@ -151,6 +201,7 @@ export interface EditorSettings {
     phase: number // 0..1, one full cycle
     swirl: number // -2..2 rotation around the centre, radial mode
   }
+  zone: EditorSettingsZones
   mask: {
     enabled: boolean
     mode: MaskMode
@@ -169,34 +220,6 @@ export interface EditorSettings {
       color: string
       opacity: number
     }
-  }
-  /**
-   * Overrides applied to the cells the selection covers, weighted by the same
-   * soft field the mask uses — so a feathered pick gives a feathered effect.
-   * This is what makes "pick the jacket, animate the jacket" one selection
-   * rather than two.
-   */
-  zone: {
-    enabled: boolean
-    /** 0..1 master weight over every override below */
-    strength: number
-    /** apply to everything the selection does *not* cover */
-    outside: boolean
-    sizeScale: number // multiplier inside the zone
-    opacityScale: number
-    densityScale: number
-    rotate: number // degrees added inside the zone
-    hueShift: number // degrees
-    saturation: number // -1..1
-    gradientOffset: number // -1..1, rolls the LUT inside the zone only
-    motionAmount: number // image px of displacement added inside the zone
-    /** the border of the selection, treated as its own thing */
-    edgeThickness: number // image px the outline reaches
-    edgeSize: number // multiplier on cells sitting on the border
-    edgeOpacity: number
-    edgeHue: number // degrees
-    /** keep only the outline and drop everything else */
-    edgeOnly: boolean
   }
   edges: {
     enabled: boolean

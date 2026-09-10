@@ -12,7 +12,7 @@ import {
   trackValueAt,
 } from '../engine/animation'
 import { downloadBlob } from '../engine/export'
-import { animatableFor, animatableGroups } from '../engine/animatable'
+import { ZONE_GROUPS, animatableFor, animatableGroups } from '../engine/animatable'
 import { ANIM_PRESETS } from '../engine/animPresets'
 import { AsciiBox, NumberField, SelectControl, Toggle, format } from './Primitives'
 
@@ -265,12 +265,22 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
 
 function AddTrack() {
   const settings = useEditor((s) => s.settings)
+  const zones = useEditor((s) => s.settings.zone.list)
   const project = useAnim((s) => s.project)
   const frame = useAnim((s) => s.frame)
   const putKeyAt = useAnim((s) => s.putKeyAt)
   const setSelected = useAnim((s) => s.setSelected)
   const [open, setOpen] = useState(false)
-  const groups = useMemo(() => animatableGroups(), [])
+
+  // A zone nobody has picked a colour for cannot do anything, so its eighteen
+  // parameters stay out of the menu rather than tripling its length.
+  const groups = useMemo(() => {
+    const hidden = new Set<string>()
+    zones.forEach((z, i) => {
+      if (!z.enabled || z.picks.length === 0) hidden.add(ZONE_GROUPS[i])
+    })
+    return animatableGroups(hidden)
+  }, [zones])
   const existing = useMemo(() => new Set(project.tracks.map((t) => t.path)), [project.tracks])
 
   const add = (path: string) => {
