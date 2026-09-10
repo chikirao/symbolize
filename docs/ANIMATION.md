@@ -215,9 +215,10 @@ control is already declared, and let everything else be basic by default.
 - [x] tagged: grid jitters, size curve/jitter/clamp, rotation jitter, colour jitter, opacity
       curve/jitter, mask tolerance, edge contrast/boost, both blend modes, original clip. Fourteen
       controls, verified: 71 sliders visible becomes 61, and flipping back restores exactly 71
-- [ ] **the default is the owner's call, still open.** Built and left defaulting to ON, so nothing
-      about the panel changed without him asking. Flipping it is one line: `showAdvanced: true` in
-      the `view` block of `store/editorStore.ts`.
+- [x] **default settled by the owner: BASIC.** The panel opens on the plain set, and a sticky
+      `(*) BASIC  ( ) ADVANCED` bar sits at the top of the scroll area — the first thing in the
+      panel, always visible. The bottom foot button and its duplicate wording are gone; the VIEW
+      menu keeps its checkbox as a secondary access point.
 
 ### R4 — GIF quality
 - [x] optional shared colour table (`ONE PALETTE`), built in a pre-pass over eight frames spread

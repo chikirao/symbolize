@@ -149,7 +149,8 @@ export const useEditor = create<EditorStore>((set, get) => ({
     fitToken: 0,
     tool: 'pan',
     pickTarget: 'mask',
-    showAdvanced: true,
+    /* start on the plain set; the ADVANCED switch sits at the top of the panel */
+    showAdvanced: false,
   },
   status: { kind: 'ready', message: 'READY', progress: -1 },
   stats: null,

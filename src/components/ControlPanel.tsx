@@ -42,6 +42,29 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         'h-full overflow-y-auto overflow-x-hidden' + (showAdvanced ? '' : ' hide-advanced')
       }
     >
+      {/* Stays put at the top of the scroll: the panel's plain set is the
+          default, and this is how you get the rest. */}
+      <div className="param-mode-bar" role="radiogroup" aria-label="parameter detail">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!showAdvanced}
+          className={'param-mode text-xs2' + (!showAdvanced ? ' is-on' : '')}
+          onClick={() => setView({ showAdvanced: false })}
+        >
+          {!showAdvanced ? '(*)' : '( )'} BASIC
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={showAdvanced}
+          className={'param-mode text-xs2' + (showAdvanced ? ' is-on' : '')}
+          onClick={() => setView({ showAdvanced: true })}
+        >
+          {showAdvanced ? '(*)' : '( )'} ADVANCED
+        </button>
+      </div>
+
       {/* ---------------- SOURCE ---------------- */}
       <Section id="source" title="SOURCE" open={isOpen('source')} onToggle={toggle}>
         <ParamSelect
@@ -736,14 +759,6 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         </Section>
       )}
 
-      {/* Nothing is removed, only undrawn — and the way back is always here. */}
-      <button
-        type="button"
-        className="advanced-toggle text-xxs"
-        onClick={() => setView({ showAdvanced: !showAdvanced })}
-      >
-        {showAdvanced ? '[-] HIDE ADVANCED CONTROLS' : '[+] SHOW ADVANCED CONTROLS'}
-      </button>
       <div className="h-10" />
     </div>
   )
