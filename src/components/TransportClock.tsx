@@ -29,14 +29,22 @@ export function TransportClock() {
       const state = useAnim.getState()
       if (!state.playing) return
       const { fps, durationFrames, loop } = state.project
-      const advance = Math.floor(((now - startTime) / 1000) * fps)
-      const target = startFrame + advance
 
-      if (loop === 'once' && target >= durationFrames - 1) {
-        useAnim.setState({ frame: durationFrames - 1, playing: false })
+      // A loop region is just a shorter timeline with an offset: everything
+      // below works in region-local frames and shifts back at the end.
+      const region = state.loopFrom >= 0 && state.loopTo >= state.loopFrom
+      const lo = region ? state.loopFrom : 0
+      const hi = region ? state.loopTo : durationFrames - 1
+      const span = Math.max(1, hi - lo + 1)
+
+      const advance = Math.floor(((now - startTime) / 1000) * fps)
+      const target = Math.max(0, startFrame - lo) + advance
+
+      if (loop === 'once' && target >= span - 1) {
+        useAnim.setState({ frame: hi, playing: false })
         return
       }
-      const next = wrapFrame(target, durationFrames, loop)
+      const next = lo + wrapFrame(target, span, loop)
       if (next !== state.frame) useAnim.setState({ frame: next })
       raf = requestAnimationFrame(tick)
     }

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { AnimationProject, Easing, KeyValue, LoopMode } from '../types/anim'
+import { animatableFor } from '../engine/animatable'
 import { DEFAULT_ANIMATION } from '../types/anim'
 import { applyAnimPreset, animPresetById } from '../engine/animPresets'
 import {
@@ -44,6 +45,14 @@ interface AnimStore {
   /** bumped whenever playback should restart its clock from the playhead */
   clockToken: number
 
+  /** draw the neighbouring keyed frames faintly under the current one */
+  onionSkin: boolean
+  /** play only this stretch; -1 on either means the whole timeline */
+  loopFrom: number
+  loopTo: number
+  /** one keyframe on the clipboard, so a pose can be repeated */
+  keyClipboard: { path: string; value: KeyValue; easing: Easing } | null
+
   /** decode settings for the next video / gif import */
   importSide: number
   /** 0 = match the source's own frame rate */
@@ -67,6 +76,13 @@ interface AnimStore {
   setLoop: (loop: LoopMode) => void
   /** matches the timeline to a freshly loaded video / gif */
   syncToSequence: (frames: number, fps: number) => void
+
+  setOnionSkin: (on: boolean) => void
+  setLoopRegion: (from: number, to: number) => void
+  clearLoopRegion: () => void
+  copyKey: (path: string) => void
+  pasteKey: (path: string) => void
+  nudgeKey: (path: string, delta: number) => void
 
   setImport: (
     patch: Partial<{
@@ -104,6 +120,10 @@ export const useAnim = create<AnimStore>((set, get) => ({
   autoKey: false,
   selected: null,
   clockToken: 0,
+  onionSkin: false,
+  loopFrom: -1,
+  loopTo: -1,
+  keyClipboard: null,
   importSide: 800,
   importFps: 0,
   importMaxFrames: 240,
@@ -142,7 +162,13 @@ export const useAnim = create<AnimStore>((set, get) => ({
   setDuration: (frames) =>
     set((s) => {
       const project = clampProject({ ...s.project, durationFrames: clampFrames(frames) })
-      return { project, frame: Math.min(s.frame, project.durationFrames - 1) }
+      const last = project.durationFrames - 1
+      return {
+        project,
+        frame: Math.min(s.frame, last),
+        loopFrom: s.loopFrom < 0 ? -1 : Math.min(s.loopFrom, last),
+        loopTo: s.loopTo < 0 ? -1 : Math.min(s.loopTo, last),
+      }
     }),
 
   setLoop: (loop) => set((s) => ({ project: { ...s.project, loop } })),
@@ -155,6 +181,49 @@ export const useAnim = create<AnimStore>((set, get) => ({
         fps: clampFps(fps),
       })
       return { project, frame: 0, open: true, clockToken: s.clockToken + 1 }
+    }),
+
+  setOnionSkin: (onionSkin) => set({ onionSkin }),
+
+  setLoopRegion: (from, to) =>
+    set((s) => {
+      const last = s.project.durationFrames - 1
+      const lo = Math.max(0, Math.min(last, Math.round(from)))
+      const hi = Math.max(lo, Math.min(last, Math.round(to)))
+      return { loopFrom: lo, loopTo: hi, clockToken: s.clockToken + 1 }
+    }),
+
+  clearLoopRegion: () => set((s) => ({ loopFrom: -1, loopTo: -1, clockToken: s.clockToken + 1 })),
+
+  copyKey: (path) => {
+    const { project, frame } = get()
+    const key = keyAtFrame(findTrack(project, path), frame)
+    if (!key) return
+    set({ keyClipboard: { path, value: key.value, easing: key.easing } })
+  },
+
+  /**
+   * Pastes onto whichever track you point at, not only the one it came from —
+   * copying a value between two tracks of the same kind is the useful case.
+   */
+  pasteKey: (path) => {
+    const { keyClipboard, frame } = get()
+    if (!keyClipboard) return
+    const from = animatableFor(keyClipboard.path)
+    const to = animatableFor(path)
+    if (!from || !to || from.kind !== to.kind) return
+    set((s) => ({
+      project: putKey(s.project, path, frame, keyClipboard.value, keyClipboard.easing),
+    }))
+  },
+
+  nudgeKey: (path, delta) =>
+    set((s) => {
+      const key = keyAtFrame(findTrack(s.project, path), s.frame)
+      if (!key) return {}
+      const to = Math.max(0, Math.min(s.project.durationFrames - 1, key.frame + delta))
+      if (to === key.frame) return {}
+      return { project: moveKey(s.project, path, key.frame, to), frame: to }
     }),
 
   setImport: (patch) => set(patch),

@@ -208,6 +208,27 @@ export function findTrack(project: AnimationProject, path: string): AnimationTra
   return project.tracks.find((t) => t.path === path)
 }
 
+/**
+ * The nearest frames either side of `frame` that any live track has a key on.
+ * What onion skinning wants to draw: where this pose came from and where it is
+ * going, rather than the arbitrary frame before and after.
+ */
+export function neighbourKeyFrames(
+  project: AnimationProject | null,
+  frame: number,
+): { prev: number | null; next: number | null } {
+  let prev: number | null = null
+  let next: number | null = null
+  if (!project) return { prev, next }
+  for (const track of activeTracks(project)) {
+    for (const key of track.keys) {
+      if (key.frame < frame && (prev === null || key.frame > prev)) prev = key.frame
+      if (key.frame > frame && (next === null || key.frame < next)) next = key.frame
+    }
+  }
+  return { prev, next }
+}
+
 export function keyAtFrame(track: AnimationTrack | undefined, frame: number): Keyframe | undefined {
   if (!track) return undefined
   return track.keys.find((k) => k.frame === frame)

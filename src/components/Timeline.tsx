@@ -39,12 +39,20 @@ function frameForRatio(t: number, duration: number): number {
   return Math.max(0, Math.min(duration - 1, Math.round(t * (duration - 1))))
 }
 
-/** The ruler is fixed geometry: eighths of the timeline, whatever its length. */
-function rulerCells(chars: number): string {
+/**
+ * The ruler is fixed geometry: eighths of the timeline, whatever its length.
+ * A loop region dims everything outside itself, so the stretch that will
+ * actually play is visible without a second widget.
+ */
+function rulerCells(chars: number, duration: number, from: number, to: number): string {
   const tick = Math.max(2, Math.round(chars / 8))
-  return Array.from({ length: chars }, (_, i) =>
-    i === 0 || i === chars - 1 || i % tick === 0 ? '┬' : '─',
-  ).join('')
+  const region = from >= 0 && to >= from
+  const lo = region ? charForFrame(from, duration, chars) : 0
+  const hi = region ? charForFrame(to, duration, chars) : chars - 1
+  return Array.from({ length: chars }, (_, i) => {
+    if (region && (i < lo || i > hi)) return '·'
+    return i === 0 || i === chars - 1 || i % tick === 0 ? '┬' : '─'
+  }).join('')
 }
 
 function trackCells(track: AnimationTrack, duration: number, chars: number): string {
@@ -144,6 +152,12 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
   const muteTrack = useAnim((s) => s.muteTrack)
   const gotoKey = useAnim((s) => s.gotoKey)
   const setEasingAt = useAnim((s) => s.setEasingAt)
+  const copyKey = useAnim((s) => s.copyKey)
+  const pasteKey = useAnim((s) => s.pasteKey)
+  const nudgeKey = useAnim((s) => s.nudgeKey)
+  const clipboardKind = useAnim((s) =>
+    s.keyClipboard ? animatableFor(s.keyClipboard.path)?.kind : undefined,
+  )
 
   const meta = animatableFor(track.path)
   const duration = project.durationFrames
@@ -169,7 +183,19 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
   }
 
   return (
-    <div className={'tl-track' + (selected === track.path ? ' is-selected' : '')}>
+    <div
+      className={'tl-track' + (selected === track.path ? ' is-selected' : '')}
+      tabIndex={0}
+      /* With a row focused the arrows belong to its key, not the playhead —
+         nudging a key one frame is the commonest edit there is. */
+      onKeyDown={(e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+        if (!here) return
+        e.preventDefault()
+        e.stopPropagation()
+        nudgeKey(track.path, e.key === 'ArrowLeft' ? -1 : 1)
+      }}
+    >
       <button
         type="button"
         className="tl-track-name text-xs2 uppercase"
@@ -221,6 +247,24 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
         </button>
         <button type="button" className="btn text-xxs" title="next key" onClick={() => gotoKey(track.path, 1)}>
           {'>'}
+        </button>
+        <button
+          type="button"
+          className="btn text-xxs"
+          disabled={!here}
+          title="copy the key on this frame"
+          onClick={() => copyKey(track.path)}
+        >
+          C
+        </button>
+        <button
+          type="button"
+          className="btn text-xxs"
+          disabled={!clipboardKind || clipboardKind !== meta?.kind}
+          title="paste the copied key onto this frame"
+          onClick={() => pasteKey(track.path)}
+        >
+          V
         </button>
         <button
           type="button"
@@ -399,6 +443,12 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
   const setLoop = useAnim((s) => s.setLoop)
   const setAutoKey = useAnim((s) => s.setAutoKey)
   const clearTracks = useAnim((s) => s.clearTracks)
+  const onionSkin = useAnim((s) => s.onionSkin)
+  const setOnionSkin = useAnim((s) => s.setOnionSkin)
+  const loopFrom = useAnim((s) => s.loopFrom)
+  const loopTo = useAnim((s) => s.loopTo)
+  const setLoopRegion = useAnim((s) => s.setLoopRegion)
+  const clearLoopRegion = useAnim((s) => s.clearLoopRegion)
   const sequence = useEditor((s) => s.sequence)
 
   const setProject = useAnim((s) => s.setProject)
@@ -407,7 +457,11 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
   const duration = project.durationFrames
   const seconds = (duration / project.fps).toFixed(1)
   const chars = props.compact ? STRIP_CHARS_COMPACT : STRIP_CHARS
-  const ruler = useMemo(() => rulerCells(chars), [chars])
+  const hasRegion = loopFrom >= 0 && loopTo >= loopFrom
+  const ruler = useMemo(
+    () => rulerCells(chars, duration, loopFrom, loopTo),
+    [chars, duration, loopFrom, loopTo],
+  )
 
   // On mobile the ANIM sheet is itself the disclosure, so the body is always
   // open there and the [+]/[-] title toggle would be a second, confusing one.
@@ -530,6 +584,42 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
             </span>
             <span className="tl-field text-xxs text-fg2">
               <Toggle checked={autoKey} label="AUTO KEY" onChange={setAutoKey} />
+            </span>
+            <span className="tl-field text-xxs text-fg2">
+              <Toggle checked={onionSkin} label="ONION" onChange={setOnionSkin} />
+            </span>
+            <span className="tl-field text-xxs text-fg2">
+              LOOP IN
+              <NumberField
+                value={hasRegion ? loopFrom : 0}
+                min={0}
+                max={duration - 1}
+                step={1}
+                decimals={0}
+                width={46}
+                ariaLabel="loop region first frame"
+                onChange={(v) => setLoopRegion(v, hasRegion ? loopTo : duration - 1)}
+              />
+              OUT
+              <NumberField
+                value={hasRegion ? loopTo : duration - 1}
+                min={0}
+                max={duration - 1}
+                step={1}
+                decimals={0}
+                width={46}
+                ariaLabel="loop region last frame"
+                onChange={(v) => setLoopRegion(hasRegion ? loopFrom : 0, v)}
+              />
+              <button
+                type="button"
+                className={'btn text-xxs ' + (hasRegion ? 'is-on' : '')}
+                title={hasRegion ? 'play the whole timeline again' : 'no region: the whole timeline plays'}
+                disabled={!hasRegion}
+                onClick={clearLoopRegion}
+              >
+                {hasRegion ? 'REGION' : 'FULL'}
+              </button>
             </span>
           </div>
 

@@ -451,6 +451,10 @@
   .tl-track.is-selected {
     background: #0c0c0c;
   }
+  .tl-track:focus-visible {
+    outline: 1px dashed var(--fg);
+    outline-offset: -1px;
+  }
   /* Fixed height: this row swaps its contents as the playhead crosses keys,
      and it must not change the height of the panel while doing so. */
   .tl-track-detail {

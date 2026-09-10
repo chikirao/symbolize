@@ -3,7 +3,7 @@ import { useEditor } from '../store/editorStore'
 import { useAnim } from '../store/animStore'
 import type { RenderStats } from '../types/editor'
 import { renderComposite, renderCompositeAsync } from '../engine/renderer'
-import { evaluateFrame } from '../engine/animation'
+import { evaluateFrame, neighbourKeyFrames } from '../engine/animation'
 import { frameSource } from '../engine/sequence'
 import { estimateCellCount } from '../engine/grid'
 import { runGlitchOverlay } from '../ui/glitch'
@@ -18,11 +18,16 @@ const QUALITY_BUDGET: Record<string, number> = {
 /** Above this many grid cells the preview switches to the chunked renderer. */
 const HEAVY_CELLS = 26_000
 
+/** Onion frames are a reference, not a picture: render them small. */
+const ONION_SCALE = 0.5
+
 export function CanvasViewport(props: { onPickFile: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const origRef = useRef<HTMLCanvasElement>(null)
   const glitchRef = useRef<HTMLCanvasElement>(null)
+  const onionPrevRef = useRef<HTMLCanvasElement>(null)
+  const onionNextRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef(0)
   const jobRef = useRef(0)
 
@@ -40,6 +45,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
   const project = useAnim((s) => s.project)
   const frame = useAnim((s) => s.frame)
   const playing = useAnim((s) => s.playing)
+  const onionSkin = useAnim((s) => s.onionSkin)
 
   const [renderMs, setRenderMs] = useState(0)
   const [renderRes, setRenderRes] = useState<[number, number]>([0, 0])
@@ -132,6 +138,48 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
     }
 
     finish(renderComposite(req))
+
+    /* Onion skin: the keyed frames either side, faint and underneath. Two
+       extra renders, so it is off while playing and drawn small — it is a
+       reference, not a picture. */
+    const onionOn = onionSkin && !playing && !interacting
+    const { prev, next } = onionOn
+      ? neighbourKeyFrames(project, frame)
+      : { prev: null, next: null }
+
+    const paintOnion = (target: HTMLCanvasElement | null, at: number | null) => {
+      if (!target) return
+      const octx = target.getContext('2d')
+      if (!octx) return
+      if (!onionOn || at === null) {
+        if (target.width > 1) {
+          target.width = 1
+          target.height = 1
+        }
+        return
+      }
+      const ow = Math.max(1, Math.round(w * ONION_SCALE))
+      const oh = Math.max(1, Math.round(h * ONION_SCALE))
+      if (target.width !== ow || target.height !== oh) {
+        target.width = ow
+        target.height = oh
+      }
+      const onionSource = sequence ? frameSource(sequence, at) : null
+      const onionMaps = onionSource ? onionSource.maps : maps
+      renderComposite({
+        ctx: octx,
+        outputWidth: ow,
+        outputHeight: oh,
+        scale: ow / onionMaps.imageWidth,
+        maps: onionMaps,
+        settings: evaluateFrame(settings, project, at),
+        original: onionSource ? onionSource.canvas : image.canvas,
+        customSymbols,
+        textSymbols,
+      })
+    }
+    paintOnion(onionPrevRef.current, prev)
+    paintOnion(onionNextRef.current, next)
   }, [
     maps,
     image,
@@ -143,6 +191,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
     customSymbols,
     textSymbols,
     interacting,
+    onionSkin,
     view.quality,
     setStats,
   ])
@@ -393,6 +442,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
    * is faded over it, so you can see both what you are sampling and what it does.
    */
   const picking = view.tool === 'pick' && !view.showOriginal && !view.beforeAfter
+  const onionVisible = onionSkin && !playing
 
   const frameW = image ? image.width * view.zoom : 0
   const frameH = image ? image.height * view.zoom : 0
@@ -473,11 +523,23 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
           >
             <div className="absolute inset-0 checker" />
             <canvas
+              ref={onionPrevRef}
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              style={{ opacity: onionSkin && !playing ? 0.28 : 0, zIndex: 0 }}
+            />
+            <canvas
+              ref={onionNextRef}
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              style={{ opacity: onionSkin && !playing ? 0.28 : 0, zIndex: 0 }}
+            />
+            <canvas
               ref={canvasRef}
               className="absolute inset-0 w-full h-full"
               style={{
                 imageRendering: view.zoom > 3 ? 'pixelated' : 'auto',
-                opacity: view.showOriginal ? 0 : picking ? 0.38 : 1,
+                // the onion layers sit under this one, so it has to let them
+                // through when they are on
+                opacity: view.showOriginal ? 0 : picking ? 0.38 : onionVisible ? 0.85 : 1,
                 zIndex: 1,
               }}
             />

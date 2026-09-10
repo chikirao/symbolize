@@ -230,9 +230,15 @@ control is already declared, and let everything else be basic by default.
       Those pixels are also kept out of the dither's error diffusion, since nothing is drawn there.
 
 ### R5 — timeline UX
-- [ ] onion skin: draw the previous and next keyed frame faintly under the current one
-- [ ] loop region (play a sub-range) separate from the export range
-- [ ] copy / paste a key, and nudge a key with the arrow keys when a track row has focus
+- [x] onion skin: the neighbouring *keyed* frames, not the arbitrary frame either side. Verified
+      with BREATHE loaded (keys at 0/24/47): at frame 12 it finds 0 and 24, and draws them at half
+      resolution and 0.28 opacity beneath the live frame. Off while playing — two extra renders.
+- [x] loop region, held in the transport rather than the project so it never reaches an export.
+      The ruler dims everything outside it. Verified: with 8-20 set, ninety samples of playback
+      visited frames 8 through 20 and nothing else.
+- [x] copy / paste a key between tracks of the same kind, and arrow keys nudge the key under the
+      playhead when a track row has focus. Verified: a key copied from `size.max` pasted onto
+      `opacity.min` at frame 30, then nudged to 33 with the playhead following.
 
 ## Constraints worth repeating
 
