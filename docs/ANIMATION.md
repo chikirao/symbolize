@@ -144,12 +144,15 @@ instead of only gating them. One selection, two uses, no second picker UI.
       hides the groups of zones nobody has picked a colour for, so neither grew.
 
 ### R2 — per-frame render cost
-- [ ] `patternTarget()` allocates a full-size canvas per frame when a blend or opacity is set —
-      reuse one across frames instead
-- [ ] `allocBuffer` allocates nine typed arrays per frame; keep and grow a buffer instead
-- [ ] silhouette / mask-alpha canvases are keyed on `SourceMaps`, so an animated source misses
-      the cache every frame — key them per frame or cache a small ring
-- [ ] measure before and after on a 200-frame sequence and put the numbers in the commit
+- [x] `patternTarget()` and the original-layer clip stencil borrow from a canvas pool instead of
+      allocating two full-size canvases every frame
+- [x] `allocBuffer` replaced by a borrow/return buffer pool that grows and never shrinks; a pool
+      rather than one module buffer, because a preview and an export can be in flight at once
+- [x] silhouette / mask-alpha canvases — already fixed in the Z2 commit, where they became
+      `WeakMap<SourceMaps, …>`; that was a correctness bug as much as a cost one
+- [x] measured on a 99-frame clip, 3417 elements per frame, 1280x960 output, three passes:
+      **5.79 -> 4.27 ms/frame** on the average, and 6.44 -> 3.59 on the last pass, where the
+      allocation pressure used to show up. Pixel-identical before and after.
 
 ### R3 — video import robustness
 - [ ] test a real camera mp4 (H.264, variable frame rate) rather than only our own WebM

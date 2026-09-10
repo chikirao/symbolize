@@ -161,6 +161,80 @@ function allocBuffer(n: number): ElementBuffer {
   }
 }
 
+/**
+ * Nine typed arrays per frame is fine for a still image and wasteful for a
+ * two-hundred-frame clip, where the grid usually has the same cell count every
+ * time. Buffers are borrowed and given back instead, growing but never
+ * shrinking, so a sequence allocates once.
+ *
+ * A pool rather than a single module-level buffer on purpose: a preview render
+ * and an export can be in flight at the same moment, and they must not be
+ * writing into the same arrays. Everything downstream reads `count`, never
+ * `length`, so an oversized buffer is safe.
+ */
+const bufferPool: ElementBuffer[] = []
+const MAX_POOLED_BUFFERS = 3
+
+function acquireBuffer(n: number): ElementBuffer {
+  const buf = bufferPool.pop()
+  if (!buf) return allocBuffer(n)
+  if (buf.x.length < n) {
+    buf.x = new Float32Array(n)
+    buf.y = new Float32Array(n)
+    buf.size = new Float32Array(n)
+    buf.rot = new Float32Array(n)
+    buf.a = new Float32Array(n)
+    buf.r = new Uint8Array(n)
+    buf.g = new Uint8Array(n)
+    buf.b = new Uint8Array(n)
+    buf.sym = new Uint16Array(n)
+  }
+  buf.count = 0
+  return buf
+}
+
+function releaseBuffer(buf: ElementBuffer): void {
+  if (bufferPool.length < MAX_POOLED_BUFFERS) bufferPool.push(buf)
+}
+
+/* ---- scratch canvases ---------------------------------------------- */
+
+/**
+ * The pattern offscreen and the original-layer clip stencil are both full
+ * output size and both were allocated fresh every frame.
+ */
+const canvasPool: HTMLCanvasElement[] = []
+const MAX_POOLED_CANVASES = 4
+
+function acquireCanvas(w: number, h: number): HTMLCanvasElement {
+  const canvas = canvasPool.pop() ?? document.createElement('canvas')
+  if (canvas.width !== w || canvas.height !== h) {
+    // resizing clears the backing store, which is what a fresh one would be
+    canvas.width = w
+    canvas.height = h
+    return canvas
+  }
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    // a borrowed canvas carries the state its last user left behind
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.globalAlpha = 1
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.clearRect(0, 0, w, h)
+  }
+  return canvas
+}
+
+function releaseCanvas(canvas: HTMLCanvasElement | null): void {
+  if (!canvas) return
+  if (canvasPool.length >= MAX_POOLED_CANVASES) {
+    canvas.width = 1
+    canvas.height = 1
+    return
+  }
+  canvasPool.push(canvas)
+}
+
 /* ------------------------------------------------------------------ */
 /* per-cell property calculation                                       */
 /* ------------------------------------------------------------------ */
@@ -171,7 +245,7 @@ export function calculateElements(
   cells: Cell[],
   pool: ResolvedSymbol[],
 ): ElementBuffer {
-  const buf = allocBuffer(cells.length)
+  const buf = acquireBuffer(cells.length)
   const imgW = maps.imageWidth
   const imgH = maps.imageHeight
   const seed = settings.random.seed
@@ -925,9 +999,7 @@ function paintUnderlays(req: RenderRequest): void {
     if (clip !== 'none') {
       // Cut the mask out of the photo (or keep only it) so whatever the
       // background layer painted shows through the hole.
-      const tmp = document.createElement('canvas')
-      tmp.width = w
-      tmp.height = h
+      const tmp = acquireCanvas(w, h)
       const tctx = tmp.getContext('2d')
       if (tctx) {
         tctx.imageSmoothingEnabled = true
@@ -948,6 +1020,7 @@ function paintUnderlays(req: RenderRequest): void {
     ctx.drawImage(source, 0, 0, w, h)
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'
+    if (source !== req.original) releaseCanvas(source as HTMLCanvasElement)
   }
 }
 
@@ -961,9 +1034,7 @@ function patternTarget(req: RenderRequest): {
     layer.opacity < 0.999 ||
     req.settings.color.mode === 'source-image'
   if (!needsOffscreen) return { ctx: req.ctx, offscreen: null }
-  const c = document.createElement('canvas')
-  c.width = req.outputWidth
-  c.height = req.outputHeight
+  const c = acquireCanvas(req.outputWidth, req.outputHeight)
   return { ctx: c.getContext('2d')!, offscreen: c }
 }
 
@@ -992,35 +1063,40 @@ function compositePattern(req: RenderRequest, offscreen: HTMLCanvasElement | nul
   req.ctx.drawImage(offscreen, 0, 0)
   req.ctx.globalAlpha = 1
   req.ctx.globalCompositeOperation = 'source-over'
+  releaseCanvas(offscreen)
 }
 
 /** Synchronous render — used for the live preview. */
 export function renderComposite(req: RenderRequest): RenderStats {
   const t0 = performance.now()
   const { cells, buf, pool } = prepare(req)
-  paintUnderlays(req)
+  try {
+    paintUnderlays(req)
 
-  if (req.settings.layers.pattern.visible && buf.count > 0) {
-    const target = patternTarget(req)
-    drawElements(
-      target.ctx,
-      buf,
-      pool,
-      req.settings.symbols.strokeWeight,
-      req.scale,
-      0,
-      buf.count,
-    )
-    compositePattern(req, target.offscreen)
-  }
+    if (req.settings.layers.pattern.visible && buf.count > 0) {
+      const target = patternTarget(req)
+      drawElements(
+        target.ctx,
+        buf,
+        pool,
+        req.settings.symbols.strokeWeight,
+        req.scale,
+        0,
+        buf.count,
+      )
+      compositePattern(req, target.offscreen)
+    }
 
-  req.ctx.setTransform(1, 0, 0, 1, 0, 0)
-  return {
-    elements: buf.count,
-    cells: cells.length,
-    ms: performance.now() - t0,
-    outputWidth: req.outputWidth,
-    outputHeight: req.outputHeight,
+    req.ctx.setTransform(1, 0, 0, 1, 0, 0)
+    return {
+      elements: buf.count,
+      cells: cells.length,
+      ms: performance.now() - t0,
+      outputWidth: req.outputWidth,
+      outputHeight: req.outputHeight,
+    }
+  } finally {
+    releaseBuffer(buf)
   }
 }
 
@@ -1064,36 +1140,40 @@ export async function renderCompositeAsync(
   onProgress?.(0.02)
   await nextFrame()
   const { cells, buf, pool } = prepare(req)
-  onProgress?.(0.2)
-  await nextFrame()
-  paintUnderlays(req)
+  try {
+    onProgress?.(0.2)
+    await nextFrame()
+    paintUnderlays(req)
 
-  if (req.settings.layers.pattern.visible && buf.count > 0) {
-    const target = patternTarget(req)
-    const CHUNK = 4000
-    for (let i = 0; i < buf.count; i += CHUNK) {
-      drawElements(
-        target.ctx,
-        buf,
-        pool,
-        req.settings.symbols.strokeWeight,
-        req.scale,
-        i,
-        i + CHUNK,
-      )
-      onProgress?.(0.2 + 0.75 * ((i + CHUNK) / buf.count))
-      await nextFrame()
+    if (req.settings.layers.pattern.visible && buf.count > 0) {
+      const target = patternTarget(req)
+      const CHUNK = 4000
+      for (let i = 0; i < buf.count; i += CHUNK) {
+        drawElements(
+          target.ctx,
+          buf,
+          pool,
+          req.settings.symbols.strokeWeight,
+          req.scale,
+          i,
+          i + CHUNK,
+        )
+        onProgress?.(0.2 + 0.75 * ((i + CHUNK) / buf.count))
+        await nextFrame()
+      }
+      compositePattern(req, target.offscreen)
     }
-    compositePattern(req, target.offscreen)
-  }
 
-  req.ctx.setTransform(1, 0, 0, 1, 0, 0)
-  onProgress?.(1)
-  return {
-    elements: buf.count,
-    cells: cells.length,
-    ms: performance.now() - t0,
-    outputWidth: req.outputWidth,
-    outputHeight: req.outputHeight,
+    req.ctx.setTransform(1, 0, 0, 1, 0, 0)
+    onProgress?.(1)
+    return {
+      elements: buf.count,
+      cells: cells.length,
+      ms: performance.now() - t0,
+      outputWidth: req.outputWidth,
+      outputHeight: req.outputHeight,
+    }
+  } finally {
+    releaseBuffer(buf)
   }
 }
