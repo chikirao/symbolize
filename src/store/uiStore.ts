@@ -62,10 +62,18 @@ interface UiStore {
   layout: LayoutState
   /** set while a resize handle is being dragged, so the app can kill selection */
   resizing: boolean
+  /** the animation walkthrough is on screen */
+  guide: boolean
+  /** it has opened by itself once; it never does so again */
+  guideSeen: boolean
 
   setLang: (lang: Lang) => void
   toggleLang: () => void
   setTips: (tips: boolean) => void
+  openGuide: () => void
+  closeGuide: () => void
+  /** open it only if it has never opened by itself before */
+  offerGuide: () => void
 
   setPanel: (id: string, patch: Partial<PanelLayout>) => void
   togglePanel: (id: string) => void
@@ -97,11 +105,12 @@ function clampColumn(v: number, limits: readonly [number, number]): number {
 interface Saved {
   lang?: Lang
   tips?: boolean
+  guideSeen?: boolean
   layout?: Partial<LayoutState>
 }
 
-function load(): { lang: Lang; tips: boolean; layout: LayoutState } {
-  const fallback = { lang: 'en' as Lang, tips: true, layout: DEFAULT_LAYOUT }
+function load(): { lang: Lang; tips: boolean; guideSeen: boolean; layout: LayoutState } {
+  const fallback = { lang: 'en' as Lang, tips: true, guideSeen: false, layout: DEFAULT_LAYOUT }
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return fallback
@@ -116,6 +125,7 @@ function load(): { lang: Lang; tips: boolean; layout: LayoutState } {
     return {
       lang: saved.lang === 'ru' ? 'ru' : 'en',
       tips: saved.tips !== false,
+      guideSeen: !!saved.guideSeen,
       layout: {
         leftWidth: clampColumn(
           saved.layout?.leftWidth ?? DEFAULT_LAYOUT.leftWidth,
@@ -141,7 +151,12 @@ function persist(state: UiStore): void {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ lang: state.lang, tips: state.tips, layout: state.layout }),
+      JSON.stringify({
+        lang: state.lang,
+        tips: state.tips,
+        guideSeen: state.guideSeen,
+        layout: state.layout,
+      }),
     )
   } catch {
     /* a private window with storage blocked is not an error worth showing */
@@ -160,6 +175,8 @@ export const useUi = create<UiStore>((set, get) => {
     tips: initial.tips,
     layout: initial.layout,
     resizing: false,
+    guide: false,
+    guideSeen: initial.guideSeen,
 
     setLang: (lang) => {
       set({ lang })
@@ -170,6 +187,15 @@ export const useUi = create<UiStore>((set, get) => {
     setTips: (tips) => {
       set({ tips })
       after()
+    },
+    openGuide: () => {
+      set({ guide: true, guideSeen: true })
+      after()
+    },
+    closeGuide: () => set({ guide: false }),
+    offerGuide: () => {
+      if (get().guideSeen) return
+      get().openGuide()
     },
 
     setPanel: (id, patch) => {

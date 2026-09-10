@@ -476,6 +476,7 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
   const hasRegion = loopFrom >= 0 && loopTo >= loopFrom
   // the track list is the part worth resizing; the transport above it is fixed
   const tracksHeight = useUi((s) => s.layout.timelineHeight)
+  const openGuide = useUi((s) => s.openGuide)
   const ruler = useMemo(
     () => rulerCells(chars, duration, loopFrom, loopTo),
     [chars, duration, loopFrom, loopTo],
@@ -686,6 +687,14 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
           <div className="tl-footer">
             <AddTrack />
             <PresetMenu />
+            <button
+              type="button"
+              className="btn text-xxs"
+              title={t('HOW THE ANIMATION MODE WORKS')}
+              onClick={openGuide}
+            >
+              [?]
+            </button>
             <button
               type="button"
               className="btn text-xxs"

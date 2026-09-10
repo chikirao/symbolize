@@ -134,6 +134,7 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
   const tips = useUi((s) => s.tips)
   const setTips = useUi((s) => s.setTips)
   const resetLayout = useUi((s) => s.resetLayout)
+  const openGuide = useUi((s) => s.openGuide)
   const store = useEditor
   const image = useEditor((s) => s.image)
   const view = useEditor((s) => s.view)
@@ -258,6 +259,7 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
             { label: 'PNG 4X', onClick: () => void quickExport(4), disabled: !image },
           ]}
         />
+        <Menu label="HELP" items={[{ label: 'HOW THE ANIMATION MODE WORKS', onClick: openGuide }]} />
       </div>
 
       <div className="mobile-toolbar-actions ml-auto">

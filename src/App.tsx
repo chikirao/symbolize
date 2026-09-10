@@ -12,6 +12,7 @@ import { SymbolLibrary } from './components/SymbolLibrary'
 import { StatusBar } from './components/StatusBar'
 import { MobileWorkspace } from './components/MobileWorkspace'
 import { ColumnStrip, PanelBox, ResizeHandle } from './components/Panel'
+import { GuideOverlay } from './components/GuideOverlay'
 import { useUi } from './store/uiStore'
 import { armIntro, runIntro } from './ui/intro'
 import { join, tr, useT } from './i18n'
@@ -167,6 +168,9 @@ export default function App() {
         sequence.name = (label || file.name || sequence.name).toUpperCase()
         loadSequence(sequence)
         useAnim.getState().syncToSequence(sequence.frames.length, sequence.fps)
+        /* The first decoded clip is the moment this stops being a still-image
+           editor, and nothing on screen says so. Once, then never again. */
+        useUi.getState().offerGuide()
         setStatus({
           kind: 'ready',
           message: join(
@@ -319,6 +323,7 @@ export default function App() {
   return (
     <div className="app-shell h-full w-full flex flex-col bg-black text-fg min-w-[900px]">
       <TransportClock />
+      <GuideOverlay />
       <Toolbar onPickFile={pickFile} onPaste={pasteFromClipboard} />
 
       {mobileLayout ? (
