@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { BUILTIN_SYMBOLS, SYMBOL_MAP, SYMBOL_SETS, type SymbolSet } from '../engine/symbols'
 import type { CustomSymbolDef, EditorSettings, TextSymbolDef } from '../types/editor'
 import { useEditor } from '../store/editorStore'
+import { useT } from '../i18n'
 import { loadCustomSymbol } from '../engine/imageLoad'
 import {
   FONT_PRESETS,
@@ -126,6 +127,7 @@ function GroupLabel(props: { text: string; right?: React.ReactNode }) {
 /* ------------------------------------------------------------------ */
 
 export function SymbolLibrary(props: { settings: EditorSettings }) {
+  const t = useT()
   const setParam = useEditor((s) => s.setParam)
   const customSymbols = useEditor((s) => s.customSymbols)
   const textSymbols = useEditor((s) => s.textSymbols)
@@ -242,7 +244,7 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
     BUILTIN_SYMBOLS.filter((s) => s.category === c).map((s) => s.id)
 
   const groups: { name: string; ids: string[]; hint?: string }[] = [
-    { name: 'BASIC', ids: byCategory('basic') },
+    { name: 'CORE', ids: byCategory('basic') },
     { name: 'DIRECTIONAL', ids: byCategory('directional') },
     { name: 'GRAPHIC', ids: byCategory('graphic') },
     ...SYMBOL_SETS.map((set) => ({ name: set.label, ids: set.ids, hint: set.hint })),
@@ -255,28 +257,35 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
     <div>
       <div className="flex items-center gap-2 px-1 py-1">
         <button type="button" className="btn text-xxs" onClick={() => bulk(() => true)}>
-          ALL
+          {t('ALL')}
         </button>
         <button type="button" className="btn text-xxs" onClick={() => bulk((id) => id === 'dot')}>
-          NONE
+          {t('NONE')}
         </button>
-        <button type="button" className="btn text-xxs" onClick={randomSet} title="pick a random mix">
-          MIX
+        <button
+          type="button"
+          className="btn text-xxs"
+          onClick={randomSet}
+          title={t('pick a random mix')}
+        >
+          {t('MIX')}
         </button>
-        <span className="ml-auto text-fg3 text-xxs">{enabledIds.length} ON</span>
+        <span className="ml-auto text-fg3 text-xxs">
+          {enabledIds.length} {t('ON')}
+        </span>
       </div>
 
       <div className="flex items-center gap-2 px-1 pb-1">
-        <span className="text-fg3 text-xxs shrink-0">SET</span>
+        <span className="text-fg3 text-xxs shrink-0">{t('SET')}</span>
         {SYMBOL_SETS.map((set) => (
           <button
             key={set.id}
             type="button"
             className="btn text-xxs"
-            title={set.hint + ' — load this set'}
+            title={t(set.hint) + ' — ' + t('load this set')}
             onClick={() => applySet(set)}
           >
-            {set.label}
+            {t(set.label)}
           </button>
         ))}
       </div>
@@ -284,25 +293,25 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
       {groups.map((g) => (
         <div key={g.name}>
           <GroupLabel
-            text={g.name + (g.hint ? '  ' + g.hint : '')}
+            text={t(g.name) + (g.hint ? '  ' + t(g.hint) : '')}
             right={
               <span className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
                   className="text-fg3 hover:text-fg text-xxs"
-                  title={'enable every symbol of ' + g.name}
+                  title={t('enable every symbol of') + ' ' + t(g.name)}
                   onClick={() => addGroup(g.ids)}
                 >
-                  ADD
+                  {t('ADD')}
                 </button>
                 <span className="text-fg3 text-xxs">/</span>
                 <button
                   type="button"
                   className="text-fg3 hover:text-fg text-xxs"
-                  title={'disable every symbol of ' + g.name}
+                  title={t('disable every symbol of') + ' ' + t(g.name)}
                   onClick={() => removeGroup(g.ids)}
                 >
-                  REMOVE
+                  {t('REMOVE')}
                 </button>
               </span>
             }
@@ -312,7 +321,7 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
               <Tile
                 key={id}
                 id={id}
-                label={SYMBOL_MAP[id].label}
+                label={t(SYMBOL_MAP[id].label)}
                 enabled={!!sym.enabled[id]}
                 weight={sym.weights[id] ?? 1}
                 onToggle={() => toggle(id)}
@@ -324,7 +333,7 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
 
       {textSymbols.length > 0 && (
         <div>
-          <GroupLabel text="GLYPHS" />
+          <GroupLabel text={t('GLYPHS')} />
           <TileGrid>
             {textSymbols.map((t) => (
               <Tile
@@ -343,7 +352,7 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
 
       {customSymbols.length > 0 && (
         <div>
-          <GroupLabel text="IMAGES" />
+          <GroupLabel text={t('IMAGES')} />
           <TileGrid>
             {customSymbols.map((c) => (
               <Tile
@@ -361,18 +370,18 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
       )}
 
       {/* ---------------- glyph packs ---------------- */}
-      <GroupLabel text="GLYPH PACKS" />
+      <GroupLabel text={t('GLYPH PACKS')} />
       <div className="px-1 pb-1 space-y-[3px]">
         {packPreviews.map((pack) => (
           <button
             key={pack.id}
             type="button"
             className="w-full flex items-center gap-1 border border-line hover:border-fg hover:bg-[#0d0d0d] px-1 py-[1px] text-left transition-colors"
-            title={'add ' + pack.label + ' :: ' + pack.chars.join(' ')}
+            title={t('add') + ' ' + pack.label + ' :: ' + pack.chars.join(' ')}
             onClick={() => addPack(pack.pack)}
           >
             <span className="text-fg2 text-xxs shrink-0" style={{ width: 58 }}>
-              {pack.label}
+              {t(pack.label)}
             </span>
             <span
               className="text-fg text-sm2 flex-1 min-w-0 truncate leading-tight"
@@ -384,12 +393,12 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
           </button>
         ))}
         <div className="text-fg3 text-xxs leading-snug">
-          CLICK A PACK TO ADD ITS GLYPHS AS SEPARATE SYMBOLS.
+          {t('CLICK A PACK TO ADD ITS GLYPHS AS SEPARATE SYMBOLS.')}
         </div>
       </div>
 
       {/* ---------------- unicode input ---------------- */}
-      <GroupLabel text="ADD UNICODE" />
+      <GroupLabel text={t('ADD UNICODE')} />
       <div className="px-1 pb-1 space-y-1">
         <div className="flex items-center gap-1 border border-line focus-within:border-fg px-1">
           <span className="text-fg3 text-xxs shrink-0">&gt;</span>
@@ -397,7 +406,7 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
             className="flex-1 min-w-0 text-sm2 outline-none py-[1px]"
             style={{ fontFamily: glyphFontFamily, fontWeight: glyphBold ? 700 : 400 }}
             placeholder="★ ✦ → ▲ 亜 ⌘ ..."
-            aria-label="unicode characters to add"
+            aria-label={t('unicode characters to add')}
             value={glyphInput}
             onChange={(e) => setGlyphInput(e.target.value)}
             onKeyDown={(e) => {
@@ -408,13 +417,13 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
         <div className="flex items-center gap-2">
           <select
             className="sel text-xxs border border-line px-1 flex-1 min-w-0"
-            aria-label="glyph font"
+            aria-label={t('glyph font')}
             value={glyphFontFamily}
             onChange={(e) => setGlyphFontFamily(e.target.value)}
           >
             {FONT_PRESETS.map((f) => (
               <option key={f.value} value={f.value}>
-                {f.label}
+                {t(f.label)}
               </option>
             ))}
           </select>
@@ -425,7 +434,7 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
             className="tog text-xxs shrink-0"
             onClick={() => setGlyphBold((b) => !b)}
           >
-            {glyphBold ? '[x]' : '[ ]'} BOLD
+            {glyphBold ? '[x]' : '[ ]'} {t('BOLD')}
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -435,21 +444,21 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
             disabled={parsedGlyphs.length === 0}
             onClick={addGlyphs}
           >
-            ADD {parsedGlyphs.length || ''}
+            {t('ADD')} {parsedGlyphs.length || ''}
           </button>
           <span className="text-fg3 text-xxs truncate">
             {parsedGlyphs.length
-              ? `${parsedGlyphs.length} GLYPH${parsedGlyphs.length > 1 ? 'S' : ''}`
-              : 'EACH CHARACTER = ONE SYMBOL'}
+              ? `${parsedGlyphs.length} ${t('GLYPHS')}`
+              : t('EACH CHARACTER = ONE SYMBOL')}
           </span>
         </div>
         <div className="text-fg3 text-xxs leading-snug">
-          DEPENDS ON INSTALLED FONTS. COLOUR EMOJI KEEP THEIR OWN COLOURS.
+          {t('DEPENDS ON INSTALLED FONTS. COLOUR EMOJI KEEP THEIR OWN COLOURS.')}
         </div>
       </div>
 
       {/* ---------------- custom image ---------------- */}
-      <GroupLabel text="ADD SVG / PNG" />
+      <GroupLabel text={t('ADD SVG / PNG')} />
       <div className="px-1 pb-1">
         <div
           className={
@@ -469,7 +478,7 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
             void handleFiles(e.dataTransfer.files)
           }}
         >
-          DROP SVG / PNG &nbsp;[+]
+          {t('DROP SVG / PNG')} &nbsp;[+]
         </div>
         <input
           ref={fileRef}
@@ -485,13 +494,15 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
       </div>
 
       {/* ---------------- active list ---------------- */}
-      <GroupLabel text={`ACTIVE ${enabledIds.length}`} />
+      <GroupLabel text={`${t('ACTIVE')} ${enabledIds.length}`} />
       <div className="px-1 pb-2">
-        {enabledIds.length === 0 && <div className="text-fg3 text-xxs">NOTHING SELECTED</div>}
+        {enabledIds.length === 0 && (
+          <div className="text-fg3 text-xxs">{t('NOTHING SELECTED')}</div>
+        )}
         {enabledIds.map((id) => {
           const custom = customById.get(id)
           const text = textById.get(id)
-          const label = text ? text.char : custom ? custom.label : SYMBOL_MAP[id]?.label || id
+          const label = text ? text.char : custom ? custom.label : t(SYMBOL_MAP[id]?.label || id)
           return (
             <div key={id} className="symbol-active-row flex items-center gap-1 group hover:bg-[#101010]">
               <SymbolPreview id={id} custom={custom} text={text} on size={16} />
@@ -500,7 +511,7 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
                 <button
                   type="button"
                   className="text-xxs text-fg3 hover:text-fg shrink-0"
-                  title="recolour with the colour settings"
+                  title={t('recolour with the colour settings')}
                   onClick={() => setCustomRecolor(custom.id, !custom.recolor)}
                 >
                   {custom.recolor ? '[x]TINT' : '[ ]TINT'}
@@ -522,7 +533,7 @@ export function SymbolLibrary(props: { settings: EditorSettings }) {
                 type="button"
                 className="text-fg3 hover:text-fg text-xxs shrink-0"
                 aria-label={'disable ' + label}
-                title={text || custom ? 'remove' : 'disable'}
+                title={text || custom ? t('remove') : t('disable')}
                 onClick={() => {
                   if (text) removeTextSymbol(text.id)
                   else if (custom) removeCustomSymbol(custom.id)

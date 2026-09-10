@@ -2,6 +2,7 @@ import React from 'react'
 import type { GradientStop } from '../types/editor'
 import { cssGradient } from '../engine/gradients'
 import { ColorField } from './Primitives'
+import { useT } from '../i18n'
 
 export function GradientEditor(props: {
   stops: GradientStop[]
@@ -9,6 +10,7 @@ export function GradientEditor(props: {
   onChange: (stops: GradientStop[]) => void
   onReverse: (v: boolean) => void
 }) {
+  const t = useT()
   const sorted = [...props.stops].sort((a, b) => a.pos - b.pos)
 
   const update = (id: string, patch: Partial<GradientStop>) => {
@@ -38,7 +40,7 @@ export function GradientEditor(props: {
       <div
         className="h-4 border border-line2"
         style={{ backgroundImage: cssGradient(props.stops, props.reverse) }}
-        aria-label="gradient preview"
+        aria-label={t('gradient preview')}
       />
       <div className="mt-1 space-y-[1px]">
         {sorted.map((s, i) => (
@@ -79,14 +81,14 @@ export function GradientEditor(props: {
       </div>
       <div className="flex gap-3 mt-1">
         <button type="button" className="btn text-xxs" onClick={add}>
-          ADD STOP
+          {t('ADD STOP')}
         </button>
         <button
           type="button"
           className={'btn text-xxs ' + (props.reverse ? 'btn-on' : '')}
           onClick={() => props.onReverse(!props.reverse)}
         >
-          REVERSE
+          {t('REVERSE')}
         </button>
       </div>
     </div>

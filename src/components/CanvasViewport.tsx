@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
+import { useT } from '../i18n'
 import { useAnim } from '../store/animStore'
 import type { RenderStats } from '../types/editor'
 import { renderComposite, renderCompositeAsync } from '../engine/renderer'
@@ -22,6 +23,7 @@ const HEAVY_CELLS = 26_000
 const ONION_SCALE = 0.5
 
 export function CanvasViewport(props: { onPickFile: () => void }) {
+  const t = useT()
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const origRef = useRef<HTMLCanvasElement>(null)
@@ -457,16 +459,16 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
     <AsciiBox
       className="flex-1 min-w-0 flex flex-col"
       bodyClassName="flex-1 min-h-0 flex"
-      title={<span className="text-fg">CANVAS</span>}
+      title={<span className="text-fg">{t('CANVAS')}</span>}
       /* Source size, zoom, render time and quality all live in the status bar
          directly below this box. What is left here is what the status bar does
          not know: the resolution the preview is actually drawn at, and which
          source frame is on screen. */
-      right={view.tool === 'pick' ? <span className="text-fg">PICK</span> : undefined}
+      right={view.tool === 'pick' ? <span className="text-fg">{t('PICK')}</span> : undefined}
       footerLeft={
         <span>
-          PREVIEW {renderRes[0]}x{renderRes[1]}
-          {sequence && ` :: SRC ${sourceFrame + 1}/${sequence.frames.length}`}
+          {t('PREVIEW')} {renderRes[0]}x{renderRes[1]}
+          {sequence && ` :: ${t('SRC')} ${sourceFrame + 1}/${sequence.frames.length}`}
         </span>
       }
     >
@@ -488,18 +490,18 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
           onPointerDown={(e) => e.stopPropagation()}
           onPointerMove={(e) => e.stopPropagation()}
         >
-          <button type="button" aria-label="zoom out" onClick={() => zoomBy(0.8)}>
+          <button type="button" aria-label={t('zoom out')} onClick={() => zoomBy(0.8)}>
             [-]
           </button>
-          <button type="button" aria-label="fit image to screen" onClick={fit}>
-            [FIT]
+          <button type="button" aria-label={t('fit image to screen')} onClick={fit}>
+            [{t('FIT')}]
           </button>
-          <button type="button" aria-label="zoom in" onClick={() => zoomBy(1.25)}>
+          <button type="button" aria-label={t('zoom in')} onClick={() => zoomBy(1.25)}>
             [+]
           </button>
           <button
             type="button"
-            aria-label="toggle before and after"
+            aria-label={t('toggle before and after')}
             aria-pressed={view.beforeAfter}
             className={view.beforeAfter ? 'is-active' : ''}
             onClick={() => setView({ beforeAfter: !view.beforeAfter, showOriginal: false })}
@@ -508,7 +510,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
           </button>
         </div>
         <div className="mobile-gesture-hint" aria-hidden="true">
-          1F PAN // 2F ZOOM // DOUBLE TAP FIT
+          {t('1F PAN // 2F ZOOM // DOUBLE TAP FIT')}
         </div>
         {image ? (
           <div
@@ -563,7 +565,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
                 onPointerMove={onSplitMove}
                 onPointerUp={() => (splitDrag.current = false)}
                 role="separator"
-                aria-label="before after split"
+                aria-label={t('before after split')}
               >
                 <div className="w-px h-full bg-white/80" />
               </div>
@@ -585,6 +587,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
 /* ------------------------------------------------------------------ */
 
 function EmptyState(props: { onPickFile: () => void }) {
+  const t = useT()
   const [tick, setTick] = useState(0)
   useEffect(() => {
     const id = window.setInterval(() => setTick((t) => t + 1), 900)
@@ -610,15 +613,11 @@ function EmptyState(props: { onPickFile: () => void }) {
         onClick={props.onPickFile}
         className="ascii-art relative text-center text-fg2 hover:text-fg"
       >
-        {`┌──────────────────────────────────┐
-│                                  │
-│          DROP IMAGE HERE         │
-│                                  │
-│      JPG / PNG / WEBP / GIF      │
-│                                  │
-│     CLICK  OR  PRESS CTRL+V      │
-│                                  │
-└──────────────────────────────────┘`}
+        <span className="block text-fg3">{'┌' + '─'.repeat(36) + '┐'}</span>
+        <span className="block py-2 text-fg tracking-widest">{t('DROP IMAGE HERE')}</span>
+        <span className="block text-xs2">JPG / PNG / WEBP / GIF / MP4</span>
+        <span className="block pt-2 text-xs2">{t('CLICK  OR  PRESS CTRL+V')}</span>
+        <span className="block text-fg3 pt-2">{'└' + '─'.repeat(36) + '┘'}</span>
       </button>
     </div>
   )

@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react'
 import { useEditor } from '../store/editorStore'
-import { AsciiBox, NumberField, Row, Scramble, SelectControl } from './Primitives'
+import { AsciiBox, Divider, NumberField, Row, Scramble, SelectControl } from './Primitives'
 import { useAnim } from '../store/animStore'
 import { SEQUENCE_SIZES } from '../engine/media'
 import { residentFrames, sequenceBytes } from '../engine/sequence'
 import { loadDemoImage } from '../engine/demo'
 import { getSelectionMask } from '../engine/selection'
+import { useT } from '../i18n'
 
 const THUMB_W = 108
 const THUMB_H = 78
@@ -115,6 +116,7 @@ function MaskPreview() {
 
 /** How a clip will be taken apart, and what the last one cost. */
 function ImportSettings() {
+  const t = useT()
   const sequence = useEditor((s) => s.sequence)
   const side = useAnim((s) => s.importSide)
   const fps = useAnim((s) => s.importFps)
@@ -128,7 +130,7 @@ function ImportSettings() {
 
   return (
     <div className="mt-1">
-      <div className="hr text-xxs my-1 select-none">── IMPORT {'─'.repeat(30)}</div>
+      <Divider label="IMPORT" />
       <Row label="SIZE">
         <SelectControl
           value={String(side)}
@@ -149,7 +151,7 @@ function ImportSettings() {
           ariaLabel="import frames per second, 0 for auto"
           onChange={(v) => setImport({ importFps: Math.max(0, Math.round(v)) })}
         />
-        <span className="text-fg3 text-xxs">{fps === 0 ? 'AUTO' : 'FPS'}</span>
+        <span className="text-fg3 text-xxs">{fps === 0 ? t('AUTO') : 'FPS'}</span>
       </Row>
       <Row label="MAX FRAMES">
         <NumberField
@@ -189,14 +191,14 @@ function ImportSettings() {
       <div className="text-fg3 text-xxs leading-snug mt-1">
         {sequence ? (
           <>
-            {sequence.frames.length} FRAMES :: {sequence.width}x{sequence.height} ::{' '}
+            {sequence.frames.length} {t('FRAMES')} :: {sequence.width}x{sequence.height} ::{' '}
             {sequence.fps} FPS
             <br />
-            {mb} MB DECODED :: {resident}/{sequence.frames.length} FRAMES STAY PREPARED
-            {sequence.truncated && <span className="text-fg2"> :: TRUNCATED</span>}
+            {mb} MB :: {resident}/{sequence.frames.length} {t('KEPT READY')}
+            {sequence.truncated && <span className="text-fg2"> :: {t('TRUNCATED')}</span>}
           </>
         ) : (
-          'DROP A VIDEO OR AN ANIMATED GIF TO GET A TIMELINE.'
+          t('DROP A VIDEO OR AN ANIMATED GIF TO GET A TIMELINE.')
         )}
       </div>
     </div>
@@ -204,6 +206,7 @@ function ImportSettings() {
 }
 
 export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void }) {
+  const t = useT()
   const image = useEditor((s) => s.image)
   const maps = useEditor((s) => s.maps)
   const clearImage = useEditor((s) => s.clearImage)
@@ -214,13 +217,13 @@ export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void
   return (
     <AsciiBox
       title="SOURCE"
-      right={<span>{image ? `${image.width}x${image.height}` : 'NO IMAGE'}</span>}
+      right={<span>{image ? `${image.width}x${image.height}` : t('NO IMAGE')}</span>}
       bodyClassName="p-2 pt-1"
     >
       <div className="flex gap-2">
         <div>
           <Thumb canvas={image?.canvas ?? null} />
-          <div className="text-fg3 text-xxs mt-[2px]">SRC</div>
+          <div className="text-fg3 text-xxs mt-[2px]">{t('SRC')}</div>
         </div>
         <div>
           <MaskPreview />
@@ -229,41 +232,43 @@ export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void
             role="checkbox"
             aria-checked={maskEnabled}
             className="tog text-xxs mt-[2px] block"
-            title="white area receives symbols"
+            title={t('white area receives symbols')}
             onClick={() => setParam('mask.enabled', !maskEnabled)}
           >
-            {maskEnabled ? '[x]' : '[ ]'} MASK
+            {maskEnabled ? '[x]' : '[ ]'} {t('MASK')}
           </button>
         </div>
       </div>
 
       <div className="text-xxs text-fg2 leading-snug mt-1 min-w-0">
         <span className="text-fg block truncate" title={image?.name}>
-          <Scramble text={image ? image.name : 'NO SOURCE'} token={image?.name} />
+          <Scramble text={image ? image.name : t('NO SOURCE')} token={image?.name} />
         </span>
         <span className="text-fg3">
-          {maps ? `MAP ${maps.width}x${maps.height} :: LOCAL ONLY, NO UPLOAD` : 'LOCAL ONLY'}
+          {maps
+            ? `${t('MAP')} ${maps.width}x${maps.height} :: ${t('LOCAL ONLY, NO UPLOAD')}`
+            : t('LOCAL ONLY')}
         </span>
       </div>
 
       <div className="flex flex-wrap gap-2 mt-1">
         <button type="button" className="btn text-xxs" onClick={props.onPickFile}>
-          LOAD
+          {t('LOAD')}
         </button>
         <button
           type="button"
           className="btn text-xxs"
           onClick={() => void loadDemoImage().then((c) => loadImageSource(c, 'DEMO_BUNNY.JPG'))}
         >
-          DEMO
+          {t('DEMO')}
         </button>
         <button
           type="button"
           className="btn text-xxs"
-          title="paste an image from the clipboard (Ctrl+V works anywhere)"
+          title={t('paste an image from the clipboard (Ctrl+V works anywhere)')}
           onClick={props.onPaste}
         >
-          PASTE
+          {t('PASTE')}
         </button>
         <button
           type="button"
@@ -271,10 +276,10 @@ export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void
           disabled={!image}
           onClick={clearImage}
         >
-          ! CLEAR
+          {'! ' + t('CLEAR')}
         </button>
       </div>
-      <div className="text-fg3 text-xxs mt-1">DROP A FILE OR PRESS CTRL+V ANYWHERE</div>
+      <div className="text-fg3 text-xxs mt-1">{t('DROP A FILE OR PRESS CTRL+V ANYWHERE')}</div>
       <ImportSettings />
     </AsciiBox>
   )

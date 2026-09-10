@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
+import { join, tr, useT } from '../i18n'
 import { AnimExportPanel } from './AnimExportPanel'
 import {
   buildFilename,
@@ -17,6 +18,7 @@ type ScaleMode = '1' | '2' | '4' | 'custom'
 type OutputMode = 'still' | 'anim'
 
 export function ExportPanel() {
+  const t = useT()
   const image = useEditor((s) => s.image)
   const sequence = useEditor((s) => s.sequence)
   const maps = useEditor((s) => s.maps)
@@ -89,36 +91,37 @@ export function ExportPanel() {
           setProgress(p)
           setStatus({
             kind: 'busy',
-            message: p < 0.95 ? 'RENDERING EXPORT...' : 'ENCODING ' + format.toUpperCase() + '...',
+            message:
+              p < 0.95 ? 'RENDERING EXPORT...' : 'ENCODING ' + format.toUpperCase() + '...',
             progress: p,
           })
         },
       )
       if (target === 'clipboard') {
         await copyBlobToClipboard(res.blob)
-        setDone('COPIED TO CLIPBOARD')
+        setDone(tr('COPIED TO CLIPBOARD'))
       } else {
         downloadBlob(res.blob, buildFilename(format))
-        setDone('EXPORT COMPLETE')
+        setDone(tr('EXPORT COMPLETE'))
       }
       setDoneToken((t) => t + 1)
       setStatus({
         kind: 'ready',
-        message:
-          'EXPORT OK :: ' +
-          res.width +
-          'x' +
-          res.height +
-          ' :: ' +
-          res.stats.elements +
-          ' SYMBOLS :: ' +
-          Math.round(res.stats.ms) +
-          'ms',
+        message: join(
+          tr('EXPORT OK'),
+          res.width + 'x' + res.height,
+          res.stats.elements + ' ' + tr('SYM'),
+          Math.round(res.stats.ms) + 'ms',
+        ),
         progress: -1,
       })
     } catch (err) {
       setDone(null)
-      setStatus({ kind: 'error', message: 'ERROR :: ' + String((err as Error).message || err), progress: -1 })
+      setStatus({
+        kind: 'error',
+        message: join(tr('ERROR'), String((err as Error).message || err)),
+        progress: -1,
+      })
     } finally {
       setBusy(false)
       setProgress(0)
@@ -223,10 +226,11 @@ export function ExportPanel() {
       )}
 
       <div className="pl-3 text-xxs text-fg3 mt-1 leading-snug">
-        OUT: {clampedW}x{clampedH}
-        {clamped && <span className="text-fg2"> (CLAMPED)</span>}
+        {t('OUTPUT')}: {clampedW}x{clampedH}
+        {clamped && <span className="text-fg2"> ({t('CLAMPED')})</span>}
         <br />
-        {format === 'png' ? 'ALPHA PRESERVED' : 'NO ALPHA CHANNEL'} :: RENDERED AT FULL SIZE
+        {format === 'png' ? t('ALPHA PRESERVED') : t('NO ALPHA CHANNEL')} ::{' '}
+        {t('RENDERED AT FULL SIZE')}
       </div>
 
       <div className="flex flex-wrap gap-2 pl-3 mt-2">
@@ -236,7 +240,7 @@ export function ExportPanel() {
           disabled={busy || !image}
           onClick={() => void run('download')}
         >
-          {busy ? 'WORKING' : 'DOWNLOAD'}
+          {busy ? t('WORKING') : t('DOWNLOAD')}
         </button>
         <button
           type="button"
@@ -244,12 +248,12 @@ export function ExportPanel() {
           disabled={busy || !image || !canCopyToClipboard() || format !== 'png'}
           title={
             canCopyToClipboard()
-              ? 'copy PNG to clipboard'
-              : 'clipboard image API unavailable in this browser'
+              ? t('copy PNG to clipboard')
+              : t('clipboard image API unavailable in this browser')
           }
           onClick={() => void run('clipboard')}
         >
-          COPY PNG
+          {t('COPY PNG')}
         </button>
       </div>
 

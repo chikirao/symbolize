@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
+import { useT } from '../i18n'
 import { AsciiBox } from './Primitives'
 import { CanvasViewport } from './CanvasViewport'
 import { ControlPanel } from './ControlPanel'
@@ -22,6 +23,7 @@ const PANELS: { id: MobilePanelId; label: string; title: string }[] = [
 ]
 
 export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => void }) {
+  const t = useT()
   const settings = useEditor((s) => s.settings)
   const [active, setActive] = useState<MobilePanelId | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -42,25 +44,25 @@ export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => 
 
   return (
     <div className="mobile-workspace flex-1 min-h-0">
-      <main className="mobile-stage" aria-label="symbolize canvas workspace">
+      <main className="mobile-stage" aria-label={t('symbolize canvas workspace')}>
         <CanvasViewport onPickFile={props.onPickFile} />
 
         {active && meta && (
           <section
             id="mobile-editor-panel"
             className="mobile-sheet panel-reveal"
-            aria-label={meta.title}
+            aria-label={t(meta.title)}
           >
             <header className="mobile-sheet-header">
-              <span className="text-fg tracking-widest">{meta.title}</span>
+              <span className="text-fg tracking-widest">{t(meta.title)}</span>
               <button
                 ref={closeRef}
                 type="button"
                 className="btn mobile-close"
-                aria-label={`close ${meta.title.toLowerCase()}`}
+                aria-label={t('CLOSE') + ' ' + t(meta.title).toLowerCase()}
                 onClick={() => setActive(null)}
               >
-                CLOSE
+                {t('CLOSE')}
               </button>
             </header>
 
@@ -100,7 +102,7 @@ export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => 
 
       <StatusBar compact />
 
-      <nav className="mobile-dock" aria-label="mobile editor panels">
+      <nav className="mobile-dock" aria-label={t('mobile editor panels')}>
         {PANELS.map((panel) => {
           const selected = active === panel.id
           return (
@@ -113,7 +115,7 @@ export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => 
               onClick={() => setActive(selected ? null : panel.id)}
             >
               <span aria-hidden="true">{selected ? '[x]' : '[ ]'}</span>
-              <span>{panel.label}</span>
+              <span>{t(panel.label)}</span>
             </button>
           )
         })}

@@ -2,8 +2,10 @@ import React, { useEffect, useRef } from 'react'
 import { useEditor } from '../store/editorStore'
 import { scrambleNumber } from '../ui/scramble'
 import { NumberField } from './Primitives'
+import { useT } from '../i18n'
 
 export function SeedControl() {
+  const t = useT()
   const seed = useEditor((s) => s.settings.random.seed)
   const setParam = useEditor((s) => s.setParam)
   const randomize = useEditor((s) => s.randomizeSeed)
@@ -21,7 +23,7 @@ export function SeedControl() {
   return (
     <div className="pl-3 py-[1px]">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs2 uppercase text-fg2">SEED</span>
+        <span className="text-xs2 uppercase text-fg2">{t('SEED')}</span>
         <span className="flex items-baseline gap-2">
           <span ref={ref} className="text-fg text-xs2 tabular-nums caret">
             {seed}
@@ -40,14 +42,14 @@ export function SeedControl() {
       </div>
       <div className="flex gap-2 mt-1">
         <button type="button" className="btn text-xs2" onClick={randomize}>
-          RANDOMIZE
+          {t('RANDOMIZE')}
         </button>
         <button
           type="button"
           className="btn text-xs2"
           onClick={() => setParam('random.seed', 183742)}
         >
-          DEFAULT
+          {t('DEFAULT')}
         </button>
       </div>
     </div>

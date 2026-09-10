@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
 import { AsciiBox } from './Primitives'
 import { scrambleText } from '../ui/scramble'
+import { useT } from '../i18n'
 
 export function PresetPanel() {
+  const t = useT()
   const presets = useEditor((s) => s.presets)
   const activePresetId = useEditor((s) => s.activePresetId)
   const applyPreset = useEditor((s) => s.applyPreset)
@@ -21,8 +23,8 @@ export function PresetPanel() {
   useEffect(() => {
     const el = activeRef.current
     if (!el) return
-    return scrambleText(el, active ? active.name : 'CUSTOM', 260, 4242)
-  }, [activePresetId, active])
+    return scrambleText(el, active ? t(active.name) : t('CUSTOM'), 260, 4242)
+  }, [activePresetId, active, t])
 
   useEffect(() => {
     if (naming) inputRef.current?.focus()
@@ -38,7 +40,10 @@ export function PresetPanel() {
   return (
     <AsciiBox title="PRESETS" bodyClassName="p-2 pt-1">
       <div className="text-xxs text-fg3 mb-1">
-        CURRENT: <span ref={activeRef} className="text-fg">{active ? active.name : 'CUSTOM'}</span>
+        {t('CURRENT')}:{' '}
+        <span ref={activeRef} className="text-fg">
+          {active ? t(active.name) : t('CUSTOM')}
+        </span>
       </div>
       <div className="max-h-[150px] overflow-y-auto pr-1">
         {presets.map((p) => (
@@ -52,7 +57,9 @@ export function PresetPanel() {
               onClick={() => applyPreset(p.id)}
             >
               {p.id === activePresetId ? '> ' : '  '}
-              {p.name}
+              {/* built-in names translate; a name someone typed themselves
+                  falls through unchanged, which is what we want */}
+              {t(p.name)}
               {!p.builtin && <span className="text-fg3 text-xxs"> *</span>}
             </button>
             {!p.builtin && (
@@ -71,7 +78,7 @@ export function PresetPanel() {
 
       {naming ? (
         <div className="flex items-center gap-1 mt-2 border border-line px-1">
-          <span className="text-fg3 text-xxs">NAME:</span>
+          <span className="text-fg3 text-xxs">{t('NAME:')}</span>
           <input
             ref={inputRef}
             className="flex-1 text-xs2 uppercase min-w-0 outline-none"
@@ -93,10 +100,10 @@ export function PresetPanel() {
       ) : (
         <div className="flex flex-wrap gap-2 mt-2">
           <button type="button" className="btn text-xxs" onClick={() => setNaming(true)}>
-            SAVE CURRENT
+            {t('SAVE CURRENT')}
           </button>
           <button type="button" className="btn text-xxs btn-danger" onClick={resetAll}>
-            ! RESET
+            {'! ' + t('RESET')}
           </button>
         </div>
       )}

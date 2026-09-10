@@ -18,7 +18,17 @@ export type { Lang }
  */
 export function translate(text: string, lang: Lang): string {
   if (lang === 'en' || !text) return text
-  return RU[text] ?? text
+  const hit = RU[text]
+  if (hit) return hit
+  /* Zone parameters carry a `Z1 ` / `Z2 ` / `Z3 ` prefix so three copies of the
+     same eighteen labels stay apart in the track menu. The prefix is a number,
+     not a word — translate what follows it. */
+  const zone = /^(Z[123] )(.+)$/.exec(text)
+  if (zone) {
+    const rest = RU[zone[2]]
+    if (rest) return zone[1] + rest
+  }
+  return text
 }
 
 /** Reactive: re-renders the component when the language changes. */

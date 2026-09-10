@@ -1,15 +1,17 @@
 import React, { useCallback, useState } from 'react'
 import { useEditor } from '../store/editorStore'
-import { Section } from './Primitives'
+import { Divider, Section } from './Primitives'
 import { ParamColor, ParamRadio, ParamSelect, ParamSlider, ParamToggle } from './ParamControls'
 import { GradientEditor } from './GradientEditor'
 import { ExportPanel } from './ExportPanel'
 import { SeedControl } from './SeedControl'
+import { useT } from '../i18n'
 import { SelectionPicker } from './SelectionPicker'
 
 const DEFAULT_OPEN = ['grid', 'size', 'color']
 
 export function ControlPanel(props: { includeExport?: boolean; singleOpen?: boolean } = {}) {
+  const t = useT()
   const includeExport = props.includeExport ?? true
   const [open, setOpen] = useState<string[]>(props.singleOpen ? ['grid'] : DEFAULT_OPEN)
   const toggle = useCallback((id: string) => {
@@ -52,7 +54,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           className={'param-mode text-xs2' + (!showAdvanced ? ' is-on' : '')}
           onClick={() => setView({ showAdvanced: false })}
         >
-          {!showAdvanced ? '(*)' : '( )'} BASIC
+          {!showAdvanced ? '(*)' : '( )'} {t('BASIC')}
         </button>
         <button
           type="button"
@@ -61,7 +63,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           className={'param-mode text-xs2' + (showAdvanced ? ' is-on' : '')}
           onClick={() => setView({ showAdvanced: true })}
         >
-          {showAdvanced ? '(*)' : '( )'} ADVANCED
+          {showAdvanced ? '(*)' : '( )'} {t('ADVANCED')}
         </button>
       </div>
 
@@ -140,7 +142,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
               decimals={0}
             />
             <div className="pl-3 text-xxs text-fg3 leading-snug">
-              FLAT AREAS = ONE BIG SYMBOL. BUSY AREAS SPLIT INTO FOUR.
+              {t('FLAT AREAS = ONE BIG SYMBOL. BUSY AREAS SPLIT INTO FOUR.')}
             </div>
           </>
         )}
@@ -173,7 +175,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
       <Section id="levels" title="LEVELS / THRESHOLD" open={isOpen('levels')} onToggle={toggle}>
         <ParamSlider path="source.blackPoint" label="BLACK POINT" min={0} max={1} step={0.01} decimals={2} />
         <ParamSlider path="source.whitePoint" label="WHITE POINT" min={0} max={1} step={0.01} decimals={2} />
-        <div className="hr text-xxs my-1 select-none">── THRESHOLD {'─'.repeat(40)}</div>
+        <Divider label="THRESHOLD" />
         <ParamSlider
           path="threshold.min"
           label="MIN THRESHOLD"
@@ -247,7 +249,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           hint="scrolls the pool along the diagonal"
         />
         <div className="pl-3 text-xxs text-fg3 mt-1">
-          POOL + WEIGHTS LIVE IN THE ELEMENTS PANEL ON THE LEFT.
+          {t('POOL + WEIGHTS LIVE IN THE ELEMENTS PANEL ON THE LEFT.')}
         </div>
       </Section>
 
@@ -344,21 +346,21 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         {colorMode === 'solid' && <ParamColor path="color.solid" label="COLOR" />}
         {colorMode === 'source' && (
           <div className="pl-3 text-xxs text-fg3 leading-snug">
-            AVERAGE RGB OF THE CELL. ONE FLAT COLOR PER SYMBOL, SOFT BLENDS.
+            {t('AVERAGE RGB OF THE CELL. ONE FLAT COLOR PER SYMBOL, SOFT BLENDS.')}
           </div>
         )}
         {colorMode === 'source-dominant' && (
           <div className="pl-3 text-xxs text-fg3 leading-snug">
-            MOST COMMON COLOR OF THE CELL, NOT THE AVERAGE.
+            {t('MOST COMMON COLOR OF THE CELL, NOT THE AVERAGE.')}
             <br />
-            ONE FLAT COLOR PER SYMBOL, KEEPS HUES CLEAN.
+            {t('ONE FLAT COLOR PER SYMBOL, KEEPS HUES CLEAN.')}
           </div>
         )}
         {colorMode === 'source-image' && (
           <div className="pl-3 text-xxs text-fg3 leading-snug">
-            THE SOURCE IMAGE SHOWS THROUGH EACH SYMBOL.
+            {t('THE SOURCE IMAGE SHOWS THROUGH EACH SYMBOL.')}
             <br />
-            HUE / SAT / BRIGHT BELOW DO NOT APPLY HERE.
+            {t('HUE / SAT / BRIGHT BELOW DO NOT APPLY HERE.')}
           </div>
         )}
         {usesGradient && (
@@ -468,7 +470,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           label="INVERT MASK"
           hint="Flip it to knock the selected colour out instead of keeping only it."
         />
-        <div className="hr text-xxs my-1 select-none">── SILHOUETTE {'─'.repeat(40)}</div>
+        <Divider label="SILHOUETTE" />
         <ParamToggle path="mask.silhouette.enabled" label="SHOW FILL" />
         <ParamColor path="mask.silhouette.color" label="FILL COLOR" />
         <ParamSlider path="mask.silhouette.opacity" label="FILL OPACITY" min={0} max={1} step={0.01} decimals={2} />
@@ -491,14 +493,14 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
               type="button"
               className={'btn text-xs2 ' + (i === zoneIndex ? 'is-on' : '')}
               aria-pressed={i === zoneIndex}
-              title={'edit zone ' + (i + 1)}
+              title={t('edit zone') + ' ' + (i + 1)}
               onClick={() => setParam('zone.active', i)}
             >
               {z.enabled ? '[' + (i + 1) + ']' : '(' + (i + 1) + ')'}
             </button>
           ))}
           <span className="text-fg3 text-xxs ml-1">
-            {zone.enabled ? 'ON' : 'OFF'} :: {zone.picks.length} PICKED
+            {zone.enabled ? t('ON') : t('OFF')} :: {zone.picks.length} {t('PICKED')}
           </span>
         </div>
 
@@ -513,7 +515,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         <ParamToggle path={zp + '.outside'} label="INVERT ZONE" hint="apply to everything the selection misses" />
         <ParamSlider path={zp + '.strength'} label="STRENGTH" min={0} max={1} step={0.01} decimals={2} />
 
-        <div className="hr text-xxs my-1 select-none">── INSIDE THE ZONE {'─'.repeat(34)}</div>
+        <Divider label="INSIDE THE ZONE" />
         <ParamSlider path={zp + '.sizeScale'} label="SIZE" min={0} max={3} step={0.01} decimals={2} suffix="x" />
         <ParamSlider path={zp + '.opacityScale'} label="OPACITY" min={0} max={3} step={0.01} decimals={2} suffix="x" />
         <ParamSlider path={zp + '.densityScale'} label="DENSITY" min={0} max={3} step={0.01} decimals={2} suffix="x" />
@@ -523,7 +525,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         <ParamSlider path={zp + '.gradientOffset'} label="GRADIENT" min={-1} max={1} step={0.001} decimals={3} />
         <ParamSlider path={zp + '.motionAmount'} label="MOTION" min={0} max={200} step={0.5} decimals={1} suffix="px" />
 
-        <div className="hr text-xxs my-1 select-none">── OUTLINE {'─'.repeat(38)}</div>
+        <Divider label="OUTLINE" />
         <ParamToggle
           path={zp + '.edgeOnly'}
           label="OUTLINE ONLY"
@@ -536,8 +538,8 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
 
         <div className="pl-3 text-xxs text-fg3 mt-1 leading-snug">
           {zone.picks.length === 0
-            ? 'PICK A COLOUR ABOVE :: A ZONE WITH NOTHING PICKED DOES NOTHING.'
-            : 'EACH ZONE HAS ITS OWN PICK AND ITS OWN OVERRIDES :: OVERLAPPING ZONES COMPOSE.'}
+            ? t('PICK A COLOUR ABOVE :: A ZONE WITH NOTHING PICKED DOES NOTHING.')
+            : t('EACH ZONE HAS ITS OWN PICK AND ITS OWN OVERRIDES :: OVERLAPPING ZONES COMPOSE.')}
         </div>
       </Section>
 
@@ -596,7 +598,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
 
       {/* ---------------- MOTION / REVEAL ---------------- */}
       <Section id="motion" title="MOTION / REVEAL" open={isOpen('motion')} onToggle={toggle}>
-        <div className="hr text-xxs my-1 select-none">── REVEAL {'─'.repeat(40)}</div>
+        <Divider label="REVEAL" />
         <ParamSelect
           path="reveal.mode"
           label="WIPE"
@@ -623,7 +625,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         />
         <ParamToggle path="reveal.invert" label="INVERT WIPE" />
 
-        <div className="hr text-xxs my-1 select-none">── MOTION {'─'.repeat(40)}</div>
+        <Divider label="MOTION" />
         <ParamSelect
           path="motion.mode"
           label="FIELD"
@@ -648,14 +650,14 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         />
         <ParamSlider path="motion.swirl" label="SWIRL" min={-2} max={2} step={0.01} decimals={2} />
         <div className="pl-3 text-xxs text-fg3 mt-1 leading-snug">
-          MOTION MOVES SYMBOLS, NOT THE SOURCE :: EACH CELL STILL SAMPLES WHERE IT SITS.
+          {t('MOTION MOVES SYMBOLS, NOT THE SOURCE :: EACH CELL STILL SAMPLES WHERE IT SITS.')}
         </div>
       </Section>
 
       {/* ---------------- RANDOM / DENSITY ---------------- */}
       <Section id="random" title="RANDOM / DENSITY" open={isOpen('random')} onToggle={toggle}>
         <SeedControl />
-        <div className="hr text-xxs my-1 select-none">── DENSITY {'─'.repeat(40)}</div>
+        <Divider label="DENSITY" />
         <ParamSlider path="density.value" label="DENSITY" min={0} max={100} step={1} decimals={0} suffix="%" />
         <ParamRadio
           path="density.mode"
@@ -676,7 +678,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           hint="fades cells in around the cutoff instead of popping them on"
         />
         <div className="pl-3 text-xxs text-fg3 mt-1 leading-snug">
-          SAME SEED + SAME SETTINGS = SAME IMAGE.
+          {t('SAME SEED + SAME SETTINGS = SAME IMAGE.')}
         </div>
       </Section>
 
@@ -696,7 +698,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         {settings.layers.background.mode === 'custom' && (
           <ParamColor path="layers.background.color" label="BG COLOR" />
         )}
-        <div className="hr text-xxs my-1 select-none">── ORIGINAL {'─'.repeat(40)}</div>
+        <Divider label="ORIGINAL" />
         <ParamToggle path="layers.original.visible" label="SHOW ORIGINAL" />
         <ParamSlider
           path="layers.original.opacity"
@@ -728,12 +730,12 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         />
         <div className="pl-3 text-xxs text-fg3 leading-snug">
           {settings.layers.original.clip === 'outside-mask'
-            ? 'PHOTO MINUS THE MASK. THE HOLE SHOWS THE BACKGROUND COLOR.'
+            ? t('PHOTO MINUS THE MASK. THE HOLE SHOWS THE BACKGROUND COLOR.')
             : settings.layers.original.clip === 'inside-mask'
-              ? 'ONLY THE MASKED PART OF THE PHOTO IS KEPT.'
-              : 'PHOTO UNDER THE PATTERN, UNTOUCHED.'}
+              ? t('ONLY THE MASKED PART OF THE PHOTO IS KEPT.')
+              : t('PHOTO UNDER THE PATTERN, UNTOUCHED.')}
         </div>
-        <div className="hr text-xxs my-1 select-none">── PATTERN {'─'.repeat(40)}</div>
+        <Divider label="PATTERN" />
         <ParamToggle path="layers.pattern.visible" label="SHOW PATTERN" />
         <ParamSlider
           path="layers.pattern.opacity"

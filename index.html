@@ -68,12 +68,18 @@
         var repeat = false;
         try { repeat = sessionStorage.getItem('symbolize.booted') === '1'; sessionStorage.setItem('symbolize.booted', '1'); } catch (e) {}
         var MIN = reduced ? 0 : (repeat ? 320 : 620);
-        var lines = ['> loading renderer', '> loading symbol library', '> allocating canvas', '> initializing interface', '> ready'];
+        var ru = false;
+        try { ru = (JSON.parse(localStorage.getItem('symbolize.ui.v1') || '{}') || {}).lang === 'ru'; } catch (e) {}
+        var lines = ru
+          ? ['> загрузка рендерера', '> загрузка библиотеки символов', '> выделение холста', '> запуск интерфейса', '> готово']
+          : ['> loading renderer', '> loading symbol library', '> allocating canvas', '> initializing interface', '> ready'];
         var glyphs = '░▒▓█';
         var pool = '#%+/X><:.▓▒░ =*-|';
         // no keyboard to press on a phone
         var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-        var PRESS_TEXT = touch ? 'TAP TO CONTINUE' : 'PRESS ANY KEY TO CONTINUE';
+        var PRESS_TEXT = ru
+          ? (touch ? 'КОСНИТЕСЬ ЭКРАНА' : 'НАЖМИТЕ ЛЮБУЮ КЛАВИШУ')
+          : (touch ? 'TAP TO CONTINUE' : 'PRESS ANY KEY TO CONTINUE');
         var i = 0, timers = [];
         var ready = false, prompted = false, handing = false, promptAt = 0;
 
@@ -82,7 +88,7 @@
         window.__bootAlive = true;
 
         if (reduced) {
-          title.textContent = 'loading...';
+          title.textContent = ru ? 'загрузка...' : 'loading...';
           bar.textContent = '';
         } else {
           var t1 = setInterval(function () {
@@ -125,7 +131,7 @@
           // the log stays where it is, finished: full bar, all lines printed
           if (log) log.textContent = lines.join('\n');
           if (bar) bar.textContent = '[████████████████████]';
-          scramble(title, 'symbolize ready.', 260);
+          scramble(title, ru ? 'symbolize готов.' : 'symbolize ready.', 260);
           // armed straight away: a key pressed while the prompt is still
           // resolving must not fall through a gap and be lost
           promptAt = Date.now();

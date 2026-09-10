@@ -3,6 +3,7 @@ import { useEditor } from '../store/editorStore'
 import { getPath } from '../store/path'
 import type { ColorPick } from '../types/editor'
 import { ColorField } from './Primitives'
+import { useT } from '../i18n'
 
 /** stable empty array so the selector does not hand back a new one each call */
 const EMPTY: ColorPick[] = []
@@ -17,6 +18,7 @@ const EMPTY: ColorPick[] = []
  * `view.pickTarget` records.
  */
 export function SelectionPicker(props: { prefix?: string }) {
+  const t = useT()
   const prefix = props.prefix ?? 'mask'
   const picks = useEditor((s) => getPath<ColorPick[]>(s.settings, prefix + '.picks') ?? EMPTY)
   const contiguous = useEditor((s) => !!getPath<boolean>(s.settings, prefix + '.contiguous'))
@@ -38,12 +40,12 @@ export function SelectionPicker(props: { prefix?: string }) {
           className={'btn text-xxs ' + (picking ? 'btn-on' : '')}
           aria-pressed={picking}
           disabled={!image}
-          title="click the canvas to sample a colour"
+          title={t('click the canvas to sample a colour')}
           onClick={() =>
             setView(picking ? { tool: 'pan' } : { tool: 'pick', pickTarget: prefix })
           }
         >
-          {picking ? 'PICKING' : 'PICK COLOR'}
+          {picking ? t('PICKING') : t('PICK COLOR')}
         </button>
         <button
           type="button"
@@ -51,13 +53,15 @@ export function SelectionPicker(props: { prefix?: string }) {
           disabled={picks.length === 0}
           onClick={() => clearPicks(prefix)}
         >
-          CLEAR
+          {t('CLEAR')}
         </button>
-        <span className="text-fg3 text-xxs">{picks.length} PICKED</span>
+        <span className="text-fg3 text-xxs">
+          {picks.length} {t('PICKED')}
+        </span>
       </div>
 
       {picking && (
-        <div className="text-fg text-xxs mt-1 caret">CLICK THE CANVAS TO SAMPLE</div>
+        <div className="text-fg text-xxs mt-1 caret">{t('CLICK THE CANVAS TO SAMPLE')}</div>
       )}
 
       <div className="mt-1 space-y-[1px]">
@@ -87,9 +91,9 @@ export function SelectionPicker(props: { prefix?: string }) {
         ))}
         {picks.length === 0 && (
           <div className="text-fg3 text-xxs leading-snug">
-            PICK ONE OR MORE COLORS OFF THE IMAGE.
+            {t('PICK ONE OR MORE COLORS OFF THE IMAGE.')}
             <br />
-            TOLERANCE WIDENS THE RANGE AROUND THEM.
+            {t('TOLERANCE WIDENS THE RANGE AROUND THEM.')}
           </div>
         )}
       </div>
@@ -99,15 +103,15 @@ export function SelectionPicker(props: { prefix?: string }) {
         role="checkbox"
         aria-checked={contiguous}
         className="tog text-xxs mt-1 block"
-        title="magic wand: keep only the area connected to the click"
+        title={t('magic wand: keep only the area connected to the click')}
         onClick={() => setParam(prefix + '.contiguous', !contiguous)}
       >
-        {contiguous ? '[x]' : '[ ]'} CONTIGUOUS (WAND)
+        {contiguous ? '[x]' : '[ ]'} {t('CONTIGUOUS (WAND)')}
       </button>
       <div className="text-fg3 text-xxs leading-snug">
         {contiguous
-          ? 'ONLY THE REGION TOUCHING EACH PICK.'
-          : 'EVERY MATCHING PIXEL IN THE IMAGE.'}
+          ? t('ONLY THE REGION TOUCHING EACH PICK.')
+          : t('EVERY MATCHING PIXEL IN THE IMAGE.')}
       </div>
     </div>
   )

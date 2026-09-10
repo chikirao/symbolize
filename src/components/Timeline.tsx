@@ -15,6 +15,7 @@ import { downloadBlob } from '../engine/export'
 import { ZONE_GROUPS, animatableFor, animatableGroups } from '../engine/animatable'
 import { ANIM_PRESETS } from '../engine/animPresets'
 import { AsciiBox, NumberField, SelectControl, Toggle, format } from './Primitives'
+import { join, tr, useT } from '../i18n'
 
 /**
  * The timeline: transport, playhead and one strip per animated parameter.
@@ -139,6 +140,7 @@ function Strip(props: {
 /* ------------------------------------------------------------------ */
 
 function TrackRow(props: { track: AnimationTrack; chars: number }) {
+  const t = useT()
   const { track, chars } = props
   const project = useAnim((s) => s.project)
   const frame = useAnim((s) => s.frame)
@@ -206,7 +208,7 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
       </button>
       <Toggle
         checked={!track.muted}
-        label={'ENABLE ' + label}
+        label={t('ENABLE') + ' ' + label}
         hideLabel
         onChange={() => muteTrack(track.path)}
       />
@@ -234,7 +236,12 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
       />
       <span className="tl-value text-xxs text-fg2">{readout}</span>
       <span className="tl-track-actions">
-        <button type="button" className="btn text-xxs" title="previous key" onClick={() => gotoKey(track.path, -1)}>
+        <button
+          type="button"
+          className="btn text-xxs"
+          title={t('previous key')}
+          onClick={() => gotoKey(track.path, -1)}
+        >
           {'<'}
         </button>
         <button
@@ -245,14 +252,19 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
         >
           {here ? '[*]' : '[.]'}
         </button>
-        <button type="button" className="btn text-xxs" title="next key" onClick={() => gotoKey(track.path, 1)}>
+        <button
+          type="button"
+          className="btn text-xxs"
+          title={t('next key')}
+          onClick={() => gotoKey(track.path, 1)}
+        >
           {'>'}
         </button>
         <button
           type="button"
           className="btn text-xxs"
           disabled={!here}
-          title="copy the key on this frame"
+          title={t('copy the key on this frame')}
           onClick={() => copyKey(track.path)}
         >
           C
@@ -261,7 +273,7 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
           type="button"
           className="btn text-xxs"
           disabled={!clipboardKind || clipboardKind !== meta?.kind}
-          title="paste the copied key onto this frame"
+          title={t('paste the copied key onto this frame')}
           onClick={() => pasteKey(track.path)}
         >
           V
@@ -269,7 +281,7 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
         <button
           type="button"
           className="btn text-xxs btn-danger"
-          title="delete track"
+          title={t('delete track')}
           onClick={() => dropTrack(track.path)}
         >
           X
@@ -285,7 +297,7 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
         <div className="tl-track-detail text-xxs text-fg2">
           {here && meta?.kind !== 'step' ? (
             <>
-              KEY {pad3(here.frame)} :: EASING
+              {t('KEY')} {pad3(here.frame)} :: {t('EASING')}
               <SelectControl
                 value={here.easing}
                 width={11}
@@ -296,7 +308,7 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
             </>
           ) : (
             <span className="text-fg3">
-              {here ? 'STEP KEY :: HOLDS UNTIL THE NEXT ONE' : 'NO KEY ON THIS FRAME'}
+              {here ? t('STEP KEY :: HOLDS UNTIL THE NEXT ONE') : t('NO KEY ON THIS FRAME')}
             </span>
           )}
         </div>
@@ -308,6 +320,7 @@ function TrackRow(props: { track: AnimationTrack; chars: number }) {
 /* ------------------------------------------------------------------ */
 
 function AddTrack() {
+  const t = useT()
   const settings = useEditor((s) => s.settings)
   const zones = useEditor((s) => s.settings.zone.list)
   const project = useAnim((s) => s.project)
@@ -341,7 +354,7 @@ function AddTrack() {
   return (
     <div className="tl-add">
       <button type="button" className="btn text-xxs" onClick={() => setOpen((v) => !v)}>
-        {open ? '- ADD TRACK' : '+ ADD TRACK'}
+        {(open ? '- ' : '+ ') + t('ADD TRACK')}
       </button>
       {open && (
         <div className="tl-add-menu">
@@ -359,7 +372,7 @@ function AddTrack() {
                   onClick={() => setOpenGroup(isOpen ? null : group.group)}
                 >
                   <span className="text-fg2">{isOpen ? '[-]' : '[+]'}</span>{' '}
-                  <span className={isOpen ? 'text-fg' : 'text-fg2'}>{group.group}</span>
+                  <span className={isOpen ? 'text-fg' : 'text-fg2'}>{t(group.group)}</span>
                   <span className="text-fg3">
                     {' '}
                     {used > 0 ? used + '/' + group.params.length : group.params.length}
@@ -377,7 +390,7 @@ function AddTrack() {
                         onClick={() => add(param.path)}
                       >
                         {existing.has(param.path) ? '[x] ' : '[ ] '}
-                        {param.label}
+                        {t(param.label)}
                       </button>
                     ))}
                   </div>
@@ -393,13 +406,14 @@ function AddTrack() {
 
 /** One-click timelines, laid onto whatever length the timeline already is. */
 function PresetMenu() {
+  const t = useT()
   const applyPreset = useAnim((s) => s.applyPreset)
   const [open, setOpen] = useState(false)
 
   return (
     <div className="tl-add">
       <button type="button" className="btn text-xxs" onClick={() => setOpen((v) => !v)}>
-        {open ? '- PRESET' : '+ PRESET'}
+        {(open ? '- ' : '+ ') + t('PRESET')}
       </button>
       {open && (
         <div className="tl-add-menu tl-preset-menu">
@@ -408,14 +422,14 @@ function PresetMenu() {
               key={preset.id}
               type="button"
               className="tl-preset-item text-xxs"
-              title={preset.note}
+              title={t(preset.note)}
               onClick={() => {
                 applyPreset(preset.id)
                 setOpen(false)
               }}
             >
-              <span className="text-fg">{preset.name}</span>
-              <span className="text-fg3"> :: {preset.note.toUpperCase()}</span>
+              <span className="text-fg">{t(preset.name)}</span>
+              <span className="text-fg3"> :: {t(preset.note).toUpperCase()}</span>
             </button>
           ))}
         </div>
@@ -427,6 +441,7 @@ function PresetMenu() {
 /* ------------------------------------------------------------------ */
 
 export function Timeline(props: { className?: string; compact?: boolean }) {
+  const t = useT()
   const project = useAnim((s) => s.project)
   const frame = useAnim((s) => s.frame)
   const playing = useAnim((s) => s.playing)
@@ -478,13 +493,13 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
       setProject(parseProject(await file.text()))
       useEditor.getState().setStatus({
         kind: 'ready',
-        message: 'ANIMATION LOADED :: ' + file.name.toUpperCase(),
+        message: join(tr('ANIMATION LOADED'), file.name.toUpperCase()),
         progress: -1,
       })
     } catch (err) {
       useEditor.getState().setStatus({
         kind: 'error',
-        message: 'ANIMATION LOAD FAILED :: ' + String((err as Error).message || err),
+        message: join(tr('ANIMATION LOAD FAILED'), String((err as Error).message || err)),
         progress: -1,
       })
     }
@@ -497,42 +512,52 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
         // the mobile sheet already has a TIMELINE header; a second one is noise
         props.compact ? undefined : (
           <button type="button" className="tl-title" onClick={toggleOpen} aria-expanded={open}>
-            {open ? '[-]' : '[+]'} TIMELINE
+            {open ? '[-]' : '[+]'} {t('TIMELINE')}
           </button>
         )
       }
       right={
         <span>
-          {sequence ? `SRC ${sequence.frames.length}F` : 'KEYFRAMES'} :: {project.tracks.length}{' '}
-          TRACKS :: {seconds}s
+          {sequence ? `${t('SRC')} ${sequence.frames.length}F` : t('KEYFRAMES')} ::{' '}
+          {project.tracks.length} {t('TRACKS')} :: {seconds}s
         </span>
       }
       bodyClassName="px-2 py-1"
     >
       <div className="tl-transport">
-        <button type="button" className="btn text-xs2" title="first frame" onClick={toFirst}>
+        <button type="button" className="btn text-xs2" title={t('first frame')} onClick={toFirst}>
           |&lt;
         </button>
-        <button type="button" className="btn text-xs2" title="previous frame" onClick={() => stepFrame(-1)}>
+        <button
+          type="button"
+          className="btn text-xs2"
+          title={t('previous frame')}
+          onClick={() => stepFrame(-1)}
+        >
           &lt;
         </button>
         <button
           type="button"
           className={'btn text-xs2 ' + (playing ? 'is-on' : '')}
-          title="play / pause (space)"
+          title={t('play / pause (space)')}
           onClick={togglePlay}
         >
-          {playing ? 'PAUSE' : 'PLAY'}
+          {playing ? t('PAUSE') : t('PLAY')}
         </button>
-        <button type="button" className="btn text-xs2" title="next frame" onClick={() => stepFrame(1)}>
+        <button
+          type="button"
+          className="btn text-xs2"
+          title={t('next frame')}
+          onClick={() => stepFrame(1)}
+        >
           &gt;
         </button>
-        <button type="button" className="btn text-xs2" title="last frame" onClick={toLast}>
+        <button type="button" className="btn text-xs2" title={t('last frame')} onClick={toLast}>
           &gt;|
         </button>
 
         <span className="text-fg text-xs2 ml-2">
-          FRAME {pad3(frame)}/{pad3(duration - 1)}
+          {t('FRAME')} {pad3(frame)}/{pad3(duration - 1)}
         </span>
       </div>
 
@@ -556,7 +581,7 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
               />
             </span>
             <span className="tl-field text-xxs text-fg2">
-              LEN
+              {t('LEN')}
               <NumberField
                 value={duration}
                 min={MIN_FRAMES}
@@ -569,7 +594,7 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
               />
             </span>
             <span className="tl-field text-xxs text-fg2">
-              LOOP
+              {t('LOOP')}
               <SelectControl
                 value={project.loop}
                 width={9}
@@ -589,7 +614,7 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
               <Toggle checked={onionSkin} label="ONION" onChange={setOnionSkin} />
             </span>
             <span className="tl-field text-xxs text-fg2">
-              LOOP IN
+              {t('LOOP IN')}
               <NumberField
                 value={hasRegion ? loopFrom : 0}
                 min={0}
@@ -600,7 +625,7 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
                 ariaLabel="loop region first frame"
                 onChange={(v) => setLoopRegion(v, hasRegion ? loopTo : duration - 1)}
               />
-              OUT
+              {t('OUT')}
               <NumberField
                 value={hasRegion ? loopTo : duration - 1}
                 min={0}
@@ -618,15 +643,15 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
                 disabled={!hasRegion}
                 onClick={clearLoopRegion}
               >
-                {hasRegion ? 'REGION' : 'FULL'}
+                {hasRegion ? t('REGION') : t('FULL')}
               </button>
             </span>
           </div>
 
           <div className="tl-ruler">
-            <span className="tl-track-name text-xxs text-fg3">FRAME</span>
+            <span className="tl-track-name text-xxs text-fg3">{t('FRAME')}</span>
             <Strip
-              ariaLabel="playhead"
+              ariaLabel={t('playhead')}
               cells={ruler}
               head={charForFrame(frame, duration, chars)}
               headChar="█"
@@ -638,8 +663,9 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
           <div className="tl-tracks">
             {project.tracks.length === 0 && (
               <div className="text-fg3 text-xxs py-1">
-                NO TRACKS :: START FROM A PRESET BELOW, ADD ONE BY HAND, OR TURN ON AUTO KEY AND
-                MOVE A SLIDER
+                {t(
+                  'NO TRACKS :: START FROM A PRESET BELOW, ADD ONE BY HAND, OR TURN ON AUTO KEY AND MOVE A SLIDER',
+                )}
               </div>
             )}
             {project.tracks.map((track) => (
@@ -654,18 +680,18 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
               type="button"
               className="btn text-xxs"
               disabled={project.tracks.length === 0}
-              title="save the timeline as JSON"
+              title={t('save the timeline as JSON')}
               onClick={saveProject}
             >
-              SAVE ANIM
+              {t('SAVE ANIM')}
             </button>
             <button
               type="button"
               className="btn text-xxs"
-              title="load a timeline JSON"
+              title={t('load a timeline JSON')}
               onClick={() => loadRef.current?.click()}
             >
-              LOAD ANIM
+              {t('LOAD ANIM')}
             </button>
             <button
               type="button"
@@ -673,7 +699,7 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
               disabled={project.tracks.length === 0}
               onClick={clearTracks}
             >
-              ! CLEAR TRACKS
+              {'! ' + t('CLEAR TRACKS')}
             </button>
             <input
               ref={loadRef}

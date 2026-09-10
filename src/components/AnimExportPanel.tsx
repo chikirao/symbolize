@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
+import { join, tr, useMessageT, useT } from '../i18n'
 import { useAnim } from '../store/animStore'
 import { clampExportSize, downloadBlob } from '../engine/export'
 import {
@@ -24,6 +25,8 @@ const FORMAT_NOTE: Record<AnimFormat, string> = {
 }
 
 export function AnimExportPanel() {
+  const t = useT()
+  const tm = useMessageT()
   const image = useEditor((s) => s.image)
   const maps = useEditor((s) => s.maps)
   const sequence = useEditor((s) => s.sequence)
@@ -125,22 +128,17 @@ export function AnimExportPanel() {
       })
       downloadBlob(result.blob, result.filename)
       const kb = Math.round(result.blob.size / 1024)
-      setDone('EXPORT COMPLETE :: ' + kb + ' KB')
+      setDone(join(tr('EXPORT COMPLETE'), kb + ' KB'))
       setDoneToken((t) => t + 1)
       setStatus({
         kind: 'ready',
-        message:
-          'ANIMATION OK :: ' +
-          result.frames +
-          ' FRAMES :: ' +
-          result.width +
-          'x' +
-          result.height +
-          ' :: ' +
-          kb +
-          ' KB :: ' +
-          Math.round(result.ms) +
-          'ms',
+        message: join(
+          tr('ANIMATION OK'),
+          result.frames + ' ' + tr('FRAMES'),
+          result.width + 'x' + result.height,
+          kb + ' KB',
+          Math.round(result.ms) + 'ms',
+        ),
         progress: -1,
       })
     } catch (err) {
@@ -148,7 +146,9 @@ export function AnimExportPanel() {
       setDone(null)
       setStatus({
         kind: controller.signal.aborted ? 'ready' : 'error',
-        message: controller.signal.aborted ? 'EXPORT CANCELLED' : 'ERROR :: ' + message,
+        message: controller.signal.aborted
+          ? tr('EXPORT CANCELLED')
+          : join(tr('ERROR'), message),
         progress: -1,
       })
     } finally {
@@ -282,33 +282,39 @@ export function AnimExportPanel() {
       )}
 
       <div className="pl-3 text-xxs text-fg3 mt-1 leading-snug">
-        OUT: {outW}x{outH} :: {frames} FRAMES :: {seconds}s
+        {t('OUTPUT')}: {outW}x{outH} :: {frames} {t('FRAMES')} :: {seconds}s
         <br />
-        {FORMAT_NOTE[format]}
+        {t(FORMAT_NOTE[format])}
         {sequence && (
           <>
             <br />
-            SOURCE :: {sequence.frames.length} DECODED FRAMES, LOOPED TO FIT THE RANGE
+            {t('SOURCE')} :: {sequence.frames.length}{' '}
+            {t('DECODED FRAMES, LOOPED TO FIT THE RANGE')}
           </>
         )}
         {clipped && (
           <>
             <br />
-            <span className="text-fg2">RANGE CLIPPED TO {MAX_ANIM_FRAMES} FRAMES</span>
+            <span className="text-fg2">
+              {t('RANGE CLIPPED TO')} {MAX_ANIM_FRAMES} {t('FRAMES')}
+            </span>
           </>
         )}
         {cost.overBudget && (
           <>
             <br />
             <span className="text-fg">
-              HEAVY :: {Math.round(cost.pixels / 1_000_000)} MPX TOTAL — THIS WILL TAKE A WHILE
+              {t('HEAVY')} :: {Math.round(cost.pixels / 1_000_000)}{' '}
+              {t('MPX TOTAL — THIS WILL TAKE A WHILE')}
             </span>
           </>
         )}
         {unsupported && (
           <>
             <br />
-            <span className="text-fg">THIS BROWSER CANNOT WRITE {format.toUpperCase()}</span>
+            <span className="text-fg">
+              {t('THIS BROWSER CANNOT WRITE')} {format.toUpperCase()}
+            </span>
           </>
         )}
       </div>
@@ -320,7 +326,9 @@ export function AnimExportPanel() {
           disabled={busy || !image || unsupported}
           onClick={() => void run()}
         >
-          {busy ? 'WORKING' : 'EXPORT ' + (format === 'zip' ? 'PNG SEQ' : format.toUpperCase())}
+          {busy
+            ? t('WORKING')
+            : t('EXPORT') + ' ' + (format === 'zip' ? t('PNG SEQ') : format.toUpperCase())}
         </button>
         <button
           type="button"
@@ -328,13 +336,13 @@ export function AnimExportPanel() {
           disabled={!busy}
           onClick={() => job.current?.abort()}
         >
-          ! CANCEL
+          {'! ' + t('CANCEL')}
         </button>
       </div>
 
       {busy && (
         <div className="pl-3 mt-1 text-xs2 text-fg2">
-          <AsciiMeter value={progress} chars={18} /> {Math.round(progress * 100)}% {label}
+          <AsciiMeter value={progress} chars={18} /> {Math.round(progress * 100)}% {tm(label)}
         </div>
       )}
       {!busy && done && (
