@@ -742,4 +742,11 @@ export const RU: Record<string, string> = {
   'fold this panel': 'свернуть панель',
   'unfold this panel': 'развернуть панель',
   LANG: 'ЯЗЫК',
+  PANELS: 'ПАНЕЛИ',
+  'left column width': 'ширина левой колонки',
+  'parameter column width': 'ширина колонки параметров',
+  'source panel height': 'высота панели источника',
+  'presets panel height': 'высота панели пресетов',
+  'timeline height': 'высота таймлайна',
+  'interface language': 'язык интерфейса',
 }

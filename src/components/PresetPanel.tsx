@@ -4,7 +4,8 @@ import { AsciiBox } from './Primitives'
 import { scrambleText } from '../ui/scramble'
 import { useT } from '../i18n'
 
-export function PresetPanel() {
+/** Contents only — the desktop shell supplies a foldable frame. */
+export function PresetPanelBody() {
   const t = useT()
   const presets = useEditor((s) => s.presets)
   const activePresetId = useEditor((s) => s.activePresetId)
@@ -38,14 +39,14 @@ export function PresetPanel() {
   }
 
   return (
-    <AsciiBox title="PRESETS" bodyClassName="p-2 pt-1">
+    <>
       <div className="text-xxs text-fg3 mb-1">
         {t('CURRENT')}:{' '}
         <span ref={activeRef} className="text-fg">
           {active ? t(active.name) : t('CUSTOM')}
         </span>
       </div>
-      <div className="max-h-[150px] overflow-y-auto pr-1">
+      <div className="preset-list overflow-y-auto pr-1">
         {presets.map((p) => (
           <div key={p.id} className="flex items-center group">
             <button
@@ -107,6 +108,14 @@ export function PresetPanel() {
           </button>
         </div>
       )}
+    </>
+  )
+}
+
+export function PresetPanel() {
+  return (
+    <AsciiBox title="PRESETS" bodyClassName="p-2 pt-1">
+      <PresetPanelBody />
     </AsciiBox>
   )
 }

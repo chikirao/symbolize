@@ -397,6 +397,162 @@
     padding: 0;
   }
 
+  /* --- resizable / foldable panels ----------------------------------- */
+
+  /* The seams are the gutters. They used to be a flex `gap`, which meant the
+     space between two panels did nothing; now it is the handle, so the
+     spacing is unchanged and there is no dead strip anywhere. */
+  .rz {
+    position: relative;
+    flex: 0 0 auto;
+    touch-action: none;
+  }
+  .rz-x {
+    width: 16px;
+    cursor: col-resize;
+  }
+  .rz-y {
+    height: 16px;
+    cursor: row-resize;
+  }
+  .rz.is-off {
+    cursor: default;
+  }
+  .rz-grip {
+    position: absolute;
+    opacity: 0.5;
+  }
+  /* The column fold lives at the top of the seam: a stack of panels has no
+     title bar of its own to hang it on. */
+  .rz-fold {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 14px;
+    text-align: center;
+    color: var(--fg3);
+    background: #000;
+    cursor: pointer;
+    line-height: 1.1;
+    opacity: 0;
+    transition: opacity 90ms linear;
+  }
+  .rz:hover .rz-fold,
+  .rz-fold:focus-visible {
+    opacity: 1;
+  }
+  .rz-fold:hover {
+    color: var(--fg);
+  }
+  .rz-x .rz-grip {
+    top: 14px;
+    bottom: 14px;
+    left: 50%;
+    width: 3px;
+    margin-left: -1px;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      var(--line2) 0 2px,
+      transparent 2px 6px
+    );
+  }
+  .rz-y .rz-grip {
+    left: 14px;
+    right: 14px;
+    top: 50%;
+    height: 3px;
+    margin-top: -1px;
+    background-image: repeating-linear-gradient(
+      to right,
+      var(--line2) 0 2px,
+      transparent 2px 6px
+    );
+  }
+  .rz:hover .rz-grip {
+    opacity: 1;
+  }
+  .rz-x:hover .rz-grip {
+    background-image: repeating-linear-gradient(to bottom, var(--fg) 0 2px, transparent 2px 5px);
+  }
+  .rz-y:hover .rz-grip {
+    background-image: repeating-linear-gradient(to right, var(--fg) 0 2px, transparent 2px 5px);
+  }
+
+  body.is-resizing {
+    user-select: none;
+  }
+  body.is-resizing * {
+    cursor: inherit !important;
+  }
+
+  .panel-fold {
+    color: var(--fg);
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .panel-fold:hover {
+    text-decoration: underline;
+  }
+
+  /* A folded panel keeps ten pixels of body so the frame still reads as one. */
+  .panel-slot.is-folded {
+    opacity: 0.72;
+  }
+  .panel-slot.is-folded:hover {
+    opacity: 1;
+  }
+
+  .preset-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 150px;
+  }
+  .panel-slot.is-sized .preset-list {
+    max-height: none;
+  }
+
+  /* A whole column folded away: the title set vertically, a letter per line. */
+  .col-strip {
+    flex: 0 0 auto;
+    width: 20px;
+    border: 1px solid var(--line);
+    background: #000;
+    color: var(--fg2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 0;
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+  }
+  .col-strip:hover {
+    border-color: var(--fg);
+    color: var(--fg);
+  }
+  .col-strip-sign {
+    color: var(--fg3);
+    line-height: 1;
+  }
+  .col-strip:hover .col-strip-sign {
+    color: var(--fg);
+  }
+  .col-strip-title {
+    font-size: 11px;
+    line-height: 1.06;
+    letter-spacing: 0;
+    text-align: center;
+  }
+
+  .desktop-timeline-wrap {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+  }
+
   /* --- timeline ------------------------------------------------------ */
   .timeline {
     flex: 0 0 auto;
@@ -521,6 +677,13 @@
     max-height: 168px;
     overflow-y: auto;
     overflow-x: hidden;
+  }
+  /* A dragged timeline reserves its height rather than capping it: someone who
+     just made room for eight tracks wants the room now, not once the tracks
+     exist. */
+  .timeline.is-sized .tl-tracks {
+    height: var(--tl-tracks);
+    max-height: none;
   }
 
   .tl-footer {

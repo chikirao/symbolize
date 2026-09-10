@@ -205,7 +205,14 @@ function ImportSettings() {
   )
 }
 
-export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void }) {
+/**
+ * The panel's contents, without a frame around them.
+ *
+ * The desktop shell wraps this in a foldable, resizable `PanelBox`; the mobile
+ * sheet wants a plain `AsciiBox`. Splitting the body out keeps one copy of the
+ * controls and lets each shell own its own chrome.
+ */
+export function SourcePanelBody(props: { onPickFile: () => void; onPaste: () => void }) {
   const t = useT()
   const image = useEditor((s) => s.image)
   const maps = useEditor((s) => s.maps)
@@ -215,11 +222,7 @@ export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void
   const setParam = useEditor((s) => s.setParam)
 
   return (
-    <AsciiBox
-      title="SOURCE"
-      right={<span>{image ? `${image.width}x${image.height}` : t('NO IMAGE')}</span>}
-      bodyClassName="p-2 pt-1"
-    >
+    <>
       <div className="flex gap-2">
         <div>
           <Thumb canvas={image?.canvas ?? null} />
@@ -281,6 +284,21 @@ export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void
       </div>
       <div className="text-fg3 text-xxs mt-1">{t('DROP A FILE OR PRESS CTRL+V ANYWHERE')}</div>
       <ImportSettings />
+    </>
+  )
+}
+
+/** The size readout that sits on the panel's top rule. */
+export function SourcePanelBadge() {
+  const t = useT()
+  const image = useEditor((s) => s.image)
+  return <span>{image ? `${image.width}x${image.height}` : t('NO IMAGE')}</span>
+}
+
+export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void }) {
+  return (
+    <AsciiBox title="SOURCE" right={<SourcePanelBadge />} bodyClassName="p-2 pt-1">
+      <SourcePanelBody {...props} />
     </AsciiBox>
   )
 }

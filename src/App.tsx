@@ -6,12 +6,13 @@ import { TransportClock } from './components/TransportClock'
 import { Timeline } from './components/Timeline'
 import { CanvasViewport } from './components/CanvasViewport'
 import { ControlPanel } from './components/ControlPanel'
-import { SourcePanel } from './components/SourcePanel'
-import { PresetPanel } from './components/PresetPanel'
+import { SourcePanelBadge, SourcePanelBody } from './components/SourcePanel'
+import { PresetPanelBody } from './components/PresetPanel'
 import { SymbolLibrary } from './components/SymbolLibrary'
 import { StatusBar } from './components/StatusBar'
 import { MobileWorkspace } from './components/MobileWorkspace'
-import { AsciiBox } from './components/Primitives'
+import { ColumnStrip, PanelBox, ResizeHandle } from './components/Panel'
+import { useUi } from './store/uiStore'
 import { armIntro, runIntro } from './ui/intro'
 import { join, tr, useT } from './i18n'
 import { loadDemoImage } from './engine/demo'
@@ -38,6 +39,9 @@ export default function App() {
   const requestFit = useEditor((s) => s.requestFit)
   const randomizeSeed = useEditor((s) => s.randomizeSeed)
   const setView = useEditor((s) => s.setView)
+  const layout = useUi((s) => s.layout)
+  const setLayout = useUi((s) => s.setLayout)
+  const setPanel = useUi((s) => s.setPanel)
 
   useEffect(() => {
     const query = window.matchMedia(
@@ -197,6 +201,19 @@ export default function App() {
 
   const pickFile = useCallback(() => fileRef.current?.click(), [])
 
+  /* ---------------- panel geometry ---------------- */
+  const foldedPanel = (id: string) => !!layout.panels[id]?.collapsed
+  const leftFolded = foldedPanel('left')
+  const paramsFolded = foldedPanel('params')
+  const timelineOpen = useAnim((s) => s.open)
+
+  /* A panel with no stored size is whatever height its content made it, so a
+     drag has to start from what is on screen rather than from a default. */
+  const measurePanel = (id: string, fallback: number) =>
+    document.querySelector('.panel-' + id)?.getBoundingClientRect().height ?? fallback
+  const measureTracks = () =>
+    document.querySelector('.tl-tracks')?.getBoundingClientRect().height ?? 168
+
   /* ---------------- clipboard ---------------- */
 
   /** Ctrl+V anywhere on the page drops a clipboard image straight in. */
@@ -308,34 +325,110 @@ export default function App() {
         <MobileWorkspace onPickFile={pickFile} onPaste={pasteFromClipboard} />
       ) : (
         <>
-          <div className="desktop-workspace flex-1 min-h-0 flex gap-4 p-4 pt-3">
-            {/* left column */}
-            <div className="hidden lg:flex w-[268px] shrink-0 flex-col gap-4 min-h-0">
-              <SourcePanel onPickFile={pickFile} onPaste={pasteFromClipboard} />
-              <AsciiBox
-                title="ELEMENTS"
-                className="flex-1 min-h-0 flex flex-col"
-                bodyClassName="flex-1 min-h-0 overflow-y-auto pt-1 pb-2"
+          {/* Every seam here is draggable and every panel folds. The gutters
+              that used to be a `gap-4` are the handles themselves, so the
+              spacing is unchanged and there is nothing dead between panels. */}
+          <div className="desktop-workspace flex-1 min-h-0 flex p-4 pt-3">
+            {leftFolded ? (
+              <ColumnStrip id="left" title="PANELS" side="left" />
+            ) : (
+              <div
+                className="desktop-left flex flex-col min-h-0 shrink-0"
+                style={{ width: layout.leftWidth }}
               >
-                <SymbolLibrary settings={settings} />
-              </AsciiBox>
-              <PresetPanel />
-            </div>
+                <PanelBox
+                  id="source"
+                  title="SOURCE"
+                  right={<SourcePanelBadge />}
+                  bodyClassName="p-2 pt-1 min-h-0 overflow-y-auto"
+                >
+                  <SourcePanelBody onPickFile={pickFile} onPaste={pasteFromClipboard} />
+                </PanelBox>
 
-            {/* canvas */}
+                <ResizeHandle
+                  axis="y"
+                  label="source panel height"
+                  disabled={foldedPanel('source') || foldedPanel('elements')}
+                  measure={() => measurePanel('source', 210)}
+                  onSize={(h) => setPanel('source', { size: h })}
+                  onReset={() => setPanel('source', { size: null })}
+                />
+
+                <PanelBox
+                  id="elements"
+                  title="ELEMENTS"
+                  flex
+                  bodyClassName="flex-1 min-h-0 overflow-y-auto pt-1 pb-2"
+                >
+                  <SymbolLibrary settings={settings} />
+                </PanelBox>
+
+                <ResizeHandle
+                  axis="y"
+                  invert
+                  label="presets panel height"
+                  disabled={foldedPanel('presets') || foldedPanel('elements')}
+                  measure={() => measurePanel('presets', 190)}
+                  onSize={(h) => setPanel('presets', { size: h })}
+                  onReset={() => setPanel('presets', { size: null })}
+                />
+
+                <PanelBox id="presets" title="PRESETS" bodyClassName="p-2 pt-1 min-h-0 flex flex-col">
+                  <PresetPanelBody />
+                </PanelBox>
+              </div>
+            )}
+
+            <ResizeHandle
+              axis="x"
+              label="left column width"
+              fold={{ id: 'left', arrow: '<' }}
+              disabled={leftFolded}
+              measure={() => useUi.getState().layout.leftWidth}
+              onSize={(w) => setLayout({ leftWidth: w })}
+              onReset={() => setLayout({ leftWidth: 268 })}
+            />
+
             <CanvasViewport onPickFile={pickFile} />
 
-            {/* right column */}
-            <AsciiBox
-              title="PARAMETERS"
-              className="w-[300px] shrink-0 flex flex-col min-h-0"
-              bodyClassName="flex-1 min-h-0 pt-1"
-            >
-              <ControlPanel />
-            </AsciiBox>
+            <ResizeHandle
+              axis="x"
+              invert
+              label="parameter column width"
+              fold={{ id: 'params', arrow: '>' }}
+              disabled={paramsFolded}
+              measure={() => useUi.getState().layout.rightWidth}
+              onSize={(w) => setLayout({ rightWidth: w })}
+              onReset={() => setLayout({ rightWidth: 300 })}
+            />
+
+            {paramsFolded ? (
+              <ColumnStrip id="params" title="PARAMETERS" side="right" />
+            ) : (
+              <PanelBox
+                id="params"
+                title="PARAMETERS"
+                width={layout.rightWidth}
+                className="min-h-0"
+                bodyClassName="flex-1 min-h-0 pt-1"
+              >
+                <ControlPanel />
+              </PanelBox>
+            )}
           </div>
 
-          <Timeline className="desktop-timeline mx-4 mb-2" />
+          <div className="desktop-timeline-wrap mx-4 mb-2">
+            <ResizeHandle
+              axis="y"
+              invert
+              label="timeline height"
+              disabled={!timelineOpen}
+              measure={() => measureTracks()}
+              onSize={(h) => setLayout({ timelineHeight: h })}
+              onReset={() => setLayout({ timelineHeight: null })}
+            />
+            <Timeline className="desktop-timeline" />
+          </div>
           <StatusBar className="desktop-status" />
         </>
       )}

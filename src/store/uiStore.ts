@@ -17,8 +17,12 @@ export interface PanelLayout {
   size: number | null
 }
 
-/** Panels that can be folded / resized. `elements` is the flexible one. */
-export const PANEL_IDS = ['source', 'elements', 'presets'] as const
+/**
+ * Foldable regions. `source` / `elements` / `presets` stack in the left column
+ * (`elements` is the flexible one); `left` and `params` fold the whole column
+ * away to a strip, which is what actually hands the canvas the screen.
+ */
+export const PANEL_IDS = ['left', 'source', 'elements', 'presets', 'params'] as const
 export type PanelId = (typeof PANEL_IDS)[number]
 
 export interface LayoutState {
@@ -41,11 +45,13 @@ const DEFAULT_LAYOUT: LayoutState = {
   rightWidth: 300,
   timelineHeight: null,
   panels: {
+    left: { collapsed: false, size: null },
     source: { collapsed: false, size: null },
     elements: { collapsed: false, size: null },
     /* Presets are a shelf you visit, not a control you hold. Folded until asked
        for — it is the panel the owner named as the one to start hidden. */
     presets: { collapsed: true, size: null },
+    params: { collapsed: false, size: null },
   },
 }
 
@@ -78,6 +84,16 @@ function clamp(v: number, [lo, hi]: readonly [number, number]): number {
   return Math.max(lo, Math.min(hi, Math.round(v)))
 }
 
+/**
+ * A side column may never take so much of the window that the canvas has
+ * nowhere left to go. The static maximum is generous for a wide screen; this
+ * is what stops it being absurd on a narrow one.
+ */
+function clampColumn(v: number, limits: readonly [number, number]): number {
+  const room = Math.max(limits[0], Math.round(window.innerWidth * 0.42))
+  return clamp(v, [limits[0], Math.min(limits[1], room)] as const)
+}
+
 interface Saved {
   lang?: Lang
   tips?: boolean
@@ -101,8 +117,11 @@ function load(): { lang: Lang; tips: boolean; layout: LayoutState } {
       lang: saved.lang === 'ru' ? 'ru' : 'en',
       tips: saved.tips !== false,
       layout: {
-        leftWidth: clamp(saved.layout?.leftWidth ?? DEFAULT_LAYOUT.leftWidth, LAYOUT_LIMITS.leftWidth),
-        rightWidth: clamp(
+        leftWidth: clampColumn(
+          saved.layout?.leftWidth ?? DEFAULT_LAYOUT.leftWidth,
+          LAYOUT_LIMITS.leftWidth,
+        ),
+        rightWidth: clampColumn(
           saved.layout?.rightWidth ?? DEFAULT_LAYOUT.rightWidth,
           LAYOUT_LIMITS.rightWidth,
         ),
@@ -178,11 +197,11 @@ export const useUi = create<UiStore>((set, get) => {
           leftWidth:
             patch.leftWidth === undefined
               ? s.layout.leftWidth
-              : clamp(patch.leftWidth, LAYOUT_LIMITS.leftWidth),
+              : clampColumn(patch.leftWidth, LAYOUT_LIMITS.leftWidth),
           rightWidth:
             patch.rightWidth === undefined
               ? s.layout.rightWidth
-              : clamp(patch.rightWidth, LAYOUT_LIMITS.rightWidth),
+              : clampColumn(patch.rightWidth, LAYOUT_LIMITS.rightWidth),
           timelineHeight:
             patch.timelineHeight === undefined
               ? s.layout.timelineHeight

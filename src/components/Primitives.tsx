@@ -13,12 +13,14 @@ export function AsciiBox(props: {
   footerRight?: React.ReactNode
   className?: string
   bodyClassName?: string
+  /** panel geometry only — a dragged height or width, never decoration */
+  style?: React.CSSProperties
   children?: React.ReactNode
 }) {
   const t = useT()
   const title = typeof props.title === 'string' ? t(props.title) : props.title
   return (
-    <div className={'ascii-box ' + (props.className || '')}>
+    <div className={'ascii-box ' + (props.className || '')} style={props.style}>
       <span className="ascii-corner tl" aria-hidden="true">
         ┌
       </span>

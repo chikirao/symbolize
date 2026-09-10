@@ -16,6 +16,7 @@ import { ZONE_GROUPS, animatableFor, animatableGroups } from '../engine/animatab
 import { ANIM_PRESETS } from '../engine/animPresets'
 import { AsciiBox, NumberField, SelectControl, Toggle, format } from './Primitives'
 import { join, tr, useT } from '../i18n'
+import { useUi } from '../store/uiStore'
 
 /**
  * The timeline: transport, playhead and one strip per animated parameter.
@@ -473,6 +474,8 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
   const seconds = (duration / project.fps).toFixed(1)
   const chars = props.compact ? STRIP_CHARS_COMPACT : STRIP_CHARS
   const hasRegion = loopFrom >= 0 && loopTo >= loopFrom
+  // the track list is the part worth resizing; the transport above it is fixed
+  const tracksHeight = useUi((s) => s.layout.timelineHeight)
   const ruler = useMemo(
     () => rulerCells(chars, duration, loopFrom, loopTo),
     [chars, duration, loopFrom, loopTo],
@@ -507,7 +510,14 @@ export function Timeline(props: { className?: string; compact?: boolean }) {
 
   return (
     <AsciiBox
-      className={'timeline ' + (props.className || '')}
+      className={
+        'timeline ' + (tracksHeight && !props.compact ? 'is-sized ' : '') + (props.className || '')
+      }
+      style={
+        tracksHeight && !props.compact
+          ? ({ ['--tl-tracks']: tracksHeight + 'px' } as React.CSSProperties)
+          : undefined
+      }
       title={
         // the mobile sheet already has a TIMELINE header; a second one is noise
         props.compact ? undefined : (
