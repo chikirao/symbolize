@@ -65,6 +65,8 @@ export interface ViewState {
   tool: 'pan' | 'pick'
   /** settings prefix the eyedropper writes into: 'mask' or 'zone.list.N' */
   pickTarget: string
+  /** show the controls tagged `advanced` in the parameter panel */
+  showAdvanced: boolean
 }
 
 export interface StatusState {
@@ -147,6 +149,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
     fitToken: 0,
     tool: 'pan',
     pickTarget: 'mask',
+    showAdvanced: true,
   },
   status: { kind: 'ready', message: 'READY', progress: -1 },
   stats: null,

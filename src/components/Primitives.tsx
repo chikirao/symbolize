@@ -124,6 +124,8 @@ export function Row(props: {
   hint?: string
   children: React.ReactNode
   className?: string
+  /** hidden while the panel is in its plain state — see ControlPanel */
+  advanced?: boolean
 }) {
   const label = (
     <span
@@ -135,7 +137,7 @@ export function Row(props: {
     </span>
   )
   return (
-    <div className={'row ' + (props.className || '')}>
+    <div className={'row ' + (props.advanced ? 'is-advanced ' : '') + (props.className || '')}>
       {props.hint ? <Hint text={props.hint}>{label}</Hint> : label}
       <div className="flex items-center justify-end gap-1">{props.children}</div>
     </div>
@@ -350,6 +352,8 @@ export function Section(props: {
   onToggle: (id: string) => void
   badge?: React.ReactNode
   children: React.ReactNode
+  /** hidden wholesale while the panel is in its plain state */
+  advanced?: boolean
 }) {
   const titleRef = useRef<HTMLSpanElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -373,7 +377,7 @@ export function Section(props: {
   }, [props.open])
 
   return (
-    <div className="control-section border-b border-line">
+    <div className={'control-section border-b border-line' + (props.advanced ? ' is-advanced' : '')}>
       <button
         type="button"
         className="section-toggle w-full flex items-center gap-1 px-2 py-[3px] text-left hover:bg-[#111] group"

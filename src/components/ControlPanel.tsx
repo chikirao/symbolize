@@ -21,6 +21,8 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
 
   const settings = useEditor((s) => s.settings)
   const setParam = useEditor((s) => s.setParam)
+  const showAdvanced = useEditor((s) => s.view.showAdvanced)
+  const setView = useEditor((s) => s.setView)
 
   const zoneIndex = Math.max(0, Math.min(settings.zone.list.length - 1, settings.zone.active))
   const zone = settings.zone.list[zoneIndex]
@@ -35,7 +37,11 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
     colorMode === 'radial'
 
   return (
-    <div className="h-full overflow-y-auto overflow-x-hidden">
+    <div
+      className={
+        'h-full overflow-y-auto overflow-x-hidden' + (showAdvanced ? '' : ' hide-advanced')
+      }
+    >
       {/* ---------------- SOURCE ---------------- */}
       <Section id="source" title="SOURCE" open={isOpen('source')} onToggle={toggle}>
         <ParamSelect
@@ -136,8 +142,8 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         <ParamSlider path="grid.offsetX" label="OFFSET X" min={-1} max={1} step={0.01} decimals={2} />
         <ParamSlider path="grid.offsetY" label="OFFSET Y" min={-1} max={1} step={0.01} decimals={2} />
         <ParamSlider path="grid.rotation" label="GRID ROTATION" min={-180} max={180} step={1} decimals={0} suffix="d" />
-        <ParamSlider path="grid.jitterX" label="JITTER X" min={0} max={1} step={0.01} decimals={2} />
-        <ParamSlider path="grid.jitterY" label="JITTER Y" min={0} max={1} step={0.01} decimals={2} />
+        <ParamSlider path="grid.jitterX" label="JITTER X" min={0} max={1} step={0.01} decimals={2} advanced />
+        <ParamSlider path="grid.jitterY" label="JITTER Y" min={0} max={1} step={0.01} decimals={2} advanced />
       </Section>
 
       {/* ---------------- LEVELS ---------------- */}
@@ -244,9 +250,9 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           hint="Multiplier of the cell size."
         />
         <ParamSlider path="size.max" label="MAX SIZE" min={0} max={3} step={0.01} decimals={2} suffix="x" />
-        <ParamSlider path="size.gamma" label="SIZE CURVE" min={0.1} max={4} step={0.01} decimals={2} />
-        <ParamSlider path="size.jitter" label="SIZE JITTER" min={0} max={1} step={0.01} decimals={2} />
-        <ParamToggle path="size.clamp" label="CLAMP TO CELL" />
+        <ParamSlider path="size.gamma" label="SIZE CURVE" min={0.1} max={4} step={0.01} decimals={2} advanced />
+        <ParamSlider path="size.jitter" label="SIZE JITTER" min={0} max={1} step={0.01} decimals={2} advanced />
+        <ParamToggle path="size.clamp" label="CLAMP TO CELL" advanced />
       </Section>
 
       {/* ---------------- ROTATION ---------------- */}
@@ -282,7 +288,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           suffix="d"
           disabled={settings.rotation.mode === 'fixed' || settings.rotation.mode === 'gradient'}
         />
-        <ParamSlider path="rotation.jitter" label="ROTATION JITTER" min={0} max={180} step={1} decimals={0} suffix="d" />
+        <ParamSlider path="rotation.jitter" label="ROTATION JITTER" min={0} max={180} step={1} decimals={0} suffix="d" advanced />
         {settings.rotation.mode === 'gradient' && (
           <ParamRadio
             path="rotation.gradientDir"
@@ -354,7 +360,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         <ParamSlider path="color.hueShift" label="HUE SHIFT" min={-180} max={180} step={1} decimals={0} suffix="d" />
         <ParamSlider path="color.saturation" label="SATURATION" min={-1} max={1} step={0.01} decimals={2} />
         <ParamSlider path="color.brightness" label="BRIGHTNESS" min={-1} max={1} step={0.01} decimals={2} />
-        <ParamSlider path="color.jitter" label="COLOR JITTER" min={0} max={1} step={0.01} decimals={2} />
+        <ParamSlider path="color.jitter" label="COLOR JITTER" min={0} max={1} step={0.01} decimals={2} advanced />
       </Section>
 
       {/* ---------------- OPACITY ---------------- */}
@@ -381,6 +387,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         />
         <ParamSlider path="opacity.max" label="MAX OPACITY" min={0} max={1} step={0.01} decimals={2} />
         <ParamSlider
+          advanced
           path="opacity.gamma"
           label="OPACITY GAMMA"
           min={0.1}
@@ -389,7 +396,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           decimals={2}
           disabled={settings.opacity.mode === 'constant'}
         />
-        <ParamSlider path="opacity.jitter" label="OPACITY JITTER" min={0} max={1} step={0.01} decimals={2} />
+        <ParamSlider path="opacity.jitter" label="OPACITY JITTER" min={0} max={1} step={0.01} decimals={2} advanced />
       </Section>
 
       {/* ---------------- MASK ---------------- */}
@@ -420,6 +427,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           <>
             <SelectionPicker />
             <ParamSlider
+              advanced
               path="mask.tolerance"
               label="TOLERANCE"
               min={0.01}
@@ -542,6 +550,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           disabled={!settings.edges.enabled}
         />
         <ParamSlider
+          advanced
           path="edges.contrast"
           label="EDGE CONTRAST"
           min={0.1}
@@ -551,6 +560,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           disabled={!settings.edges.enabled}
         />
         <ParamSlider
+          advanced
           path="edges.boost"
           label="EDGE BOOST"
           min={0}
@@ -675,12 +685,14 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           disabled={!settings.layers.original.visible}
         />
         <ParamSelect
+          advanced
           path="layers.original.blend"
           label="ORIGINAL BLEND"
           options={BLEND_OPTIONS}
           width={9}
         />
         <ParamSelect
+          advanced
           path="layers.original.clip"
           label="ORIGINAL CLIP"
           width={12}
@@ -709,6 +721,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
           decimals={2}
         />
         <ParamSelect
+          advanced
           path="layers.pattern.blend"
           label="PATTERN BLEND"
           options={BLEND_OPTIONS}
@@ -723,6 +736,14 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         </Section>
       )}
 
+      {/* Nothing is removed, only undrawn — and the way back is always here. */}
+      <button
+        type="button"
+        className="advanced-toggle text-xxs"
+        onClick={() => setView({ showAdvanced: !showAdvanced })}
+      >
+        {showAdvanced ? '[-] HIDE ADVANCED CONTROLS' : '[+] SHOW ADVANCED CONTROLS'}
+      </button>
       <div className="h-10" />
     </div>
   )

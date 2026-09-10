@@ -28,6 +28,8 @@ export interface SliderProps {
   suffix?: string
   /** keyframe marker, rendered next to the value (see ParamControls) */
   marker?: React.ReactNode
+  /** hidden while the panel is in its plain state */
+  advanced?: boolean
 }
 
 export function SliderControl(props: SliderProps) {
@@ -42,6 +44,7 @@ export function SliderControl(props: SliderProps) {
     <div
       className={
         'slider-control group relative pl-3 py-[1px] ' +
+        (props.advanced ? 'is-advanced ' : '') +
         (props.disabled ? 'opacity-40 pointer-events-none' : '')
       }
     >

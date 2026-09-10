@@ -581,6 +581,35 @@
     background: #111;
   }
 
+  /* One declaration site per control: a control marked `advanced` carries this
+     class, and the panel hides them all at once. No second list to drift. */
+  .hide-advanced .is-advanced {
+    display: none !important;
+  }
+
+  .advanced-toggle {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 5px 8px;
+    color: var(--fg3);
+    cursor: pointer;
+  }
+  .advanced-toggle:hover {
+    color: var(--fg);
+  }
+
+  .tl-add-group-head {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 1px 0;
+    cursor: pointer;
+  }
+  .tl-add-group-head:hover {
+    background: #111;
+  }
+
   .zone-tabs {
     display: flex;
     align-items: center;

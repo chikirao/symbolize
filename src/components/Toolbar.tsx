@@ -187,6 +187,12 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
               onClick: () => setView({ quality: q }),
             })),
             { label: '', divider: true },
+            {
+              label: 'ADVANCED CONTROLS',
+              checked: view.showAdvanced,
+              onClick: () => setView({ showAdvanced: !view.showAdvanced }),
+            },
+            { label: '', divider: true },
             { label: 'REPLAY INTRO', onClick: () => void replayIntro() },
           ]}
         />

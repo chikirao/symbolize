@@ -178,8 +178,11 @@ hidden must be one obvious click away.
 Already done (in the jump-fix commit): rate/length/loop/auto-key moved out of the collapsed
 transport, and the empty `[ ]` keyframe marker only appears while the timeline is open.
 
-- [ ] ADD TRACK menu is a wall of 74 items — collapse to group headers, one group open at a time
-- [ ] look for readouts printed twice (timeline header vs status bar vs canvas footer), keep one
+- [x] ADD TRACK menu collapsed to group headers, one group open at a time: 14 headers and zero
+      items until you open one, against roughly ninety items in a single wall before
+- [x] the canvas box was reprinting the status bar sitting directly under it — source size, zoom,
+      render time and quality. It now shows only what the status bar does not know: the preview's
+      own render resolution, which source frame is up, and the PICK state
 
 #### BASIC / ADVANCED — how to do it without a second list
 
@@ -207,11 +210,14 @@ control is already declared, and let everything else be basic by default.
   that is what keeps it from feeling lossy, and it doubles as the discovery path.
 * Counting comes from the same flags (walk the rendered tree once), not from a hand-kept number.
 
-- [ ] implement the `advanced` flag plumbing above
-- [ ] tag the genuinely advanced controls: adaptive-grid trio, edge contrast/boost, mask
-      tolerance/contiguous, blend modes, original clip, opacity and size gammas, jitters
-- [ ] **the default is the owner's call** — it only helps if ADVANCED starts off, and that changes
-      what he sees on open. Build it defaulting to off, tell him, make it one click to flip.
+- [x] `advanced` flag plumbed through `Section`, `Row`, `SliderControl` and every `Param*`; one
+      CSS class, one switch in the VIEW menu, and a `[+] SHOW ADVANCED CONTROLS` foot on the panel
+- [x] tagged: grid jitters, size curve/jitter/clamp, rotation jitter, colour jitter, opacity
+      curve/jitter, mask tolerance, edge contrast/boost, both blend modes, original clip. Fourteen
+      controls, verified: 71 sliders visible becomes 61, and flipping back restores exactly 71
+- [ ] **the default is the owner's call, still open.** Built and left defaulting to ON, so nothing
+      about the panel changed without him asking. Flipping it is one line: `showAdvanced: true` in
+      the `view` block of `store/editorStore.ts`.
 
 ### R4 — GIF quality
 - [ ] optional global palette built from a sample of every frame: bigger first pass, but no

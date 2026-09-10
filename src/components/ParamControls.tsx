@@ -128,6 +128,7 @@ export function ParamSlider(props: {
   suffix?: string
   disabled?: boolean
   hint?: string
+  advanced?: boolean
 }) {
   const param = useAnimatedParam(props.path)
   const reset = useEditor((s) => s.resetParam)
@@ -144,6 +145,7 @@ export function ParamSlider(props: {
       suffix={props.suffix}
       disabled={props.disabled}
       hint={props.hint}
+      advanced={props.advanced}
       marker={param.animatable ? <KeyDot path={props.path} value={value} /> : undefined}
       onChange={(v) => commitParam(props.path, v, param.keying, true)}
       onReset={() => reset(props.path)}
@@ -156,13 +158,19 @@ export function ParamToggle(props: {
   label: string
   disabled?: boolean
   hint?: string
+  advanced?: boolean
 }) {
   const param = useAnimatedParam(props.path)
   const reset = useEditor((s) => s.resetParam)
   const checked = param.value === true || param.value === 'true'
 
   return (
-    <Row label={props.label} hint={props.hint} onReset={() => reset(props.path)}>
+    <Row
+      label={props.label}
+      hint={props.hint}
+      advanced={props.advanced}
+      onReset={() => reset(props.path)}
+    >
       {param.animatable && <KeyDot path={props.path} value={String(checked)} />}
       <Toggle
         checked={checked}
@@ -180,13 +188,19 @@ export function ParamSelect<T extends string>(props: {
   options: { value: T; label: string }[]
   hint?: string
   width?: number
+  advanced?: boolean
 }) {
   const param = useAnimatedParam(props.path)
   const reset = useEditor((s) => s.resetParam)
   const value = String(param.value ?? '') as T
 
   return (
-    <Row label={props.label} hint={props.hint} onReset={() => reset(props.path)}>
+    <Row
+      label={props.label}
+      hint={props.hint}
+      advanced={props.advanced}
+      onReset={() => reset(props.path)}
+    >
       {param.animatable && <KeyDot path={props.path} value={value} />}
       <SelectControl
         value={value}
@@ -216,13 +230,13 @@ export function ParamRadio<T extends string>(props: {
   )
 }
 
-export function ParamColor(props: { path: string; label: string }) {
+export function ParamColor(props: { path: string; label: string; advanced?: boolean }) {
   const param = useAnimatedParam(props.path)
   const reset = useEditor((s) => s.resetParam)
   const value = String(param.value ?? '#FFFFFF').toUpperCase()
 
   return (
-    <Row label={props.label} onReset={() => reset(props.path)}>
+    <Row label={props.label} advanced={props.advanced} onReset={() => reset(props.path)}>
       {param.animatable && <KeyDot path={props.path} value={value} />}
       <ColorField
         value={value || '#FFFFFF'}

@@ -408,20 +408,17 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
       className="flex-1 min-w-0 flex flex-col"
       bodyClassName="flex-1 min-h-0 flex"
       title={<span className="text-fg">CANVAS</span>}
-      right={
-        <span>
-          {view.tool === 'pick' && <span className="text-fg">PICK :: </span>}
-          {image ? `${image.width}x${image.height}` : 'NO SOURCE'} :: {zoomPct}%
-        </span>
-      }
+      /* Source size, zoom, render time and quality all live in the status bar
+         directly below this box. What is left here is what the status bar does
+         not know: the resolution the preview is actually drawn at, and which
+         source frame is on screen. */
+      right={view.tool === 'pick' ? <span className="text-fg">PICK</span> : undefined}
       footerLeft={
         <span>
-          PREVIEW {renderRes[0]}x{renderRes[1]} ::{' '}
-          {interacting || playing ? 'DRAFT' : view.quality.toUpperCase()}
+          PREVIEW {renderRes[0]}x{renderRes[1]}
           {sequence && ` :: SRC ${sourceFrame + 1}/${sequence.frames.length}`}
         </span>
       }
-      footerRight={<span>{renderMs.toFixed(1)}ms</span>}
     >
       <div
         ref={containerRef}

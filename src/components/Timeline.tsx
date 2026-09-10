@@ -271,6 +271,7 @@ function AddTrack() {
   const putKeyAt = useAnim((s) => s.putKeyAt)
   const setSelected = useAnim((s) => s.setSelected)
   const [open, setOpen] = useState(false)
+  const [openGroup, setOpenGroup] = useState<string | null>(null)
 
   // A zone nobody has picked a colour for cannot do anything, so its eighteen
   // parameters stay out of the menu rather than tripling its length.
@@ -300,26 +301,46 @@ function AddTrack() {
       </button>
       {open && (
         <div className="tl-add-menu">
-          {groups.map((group) => (
-            <div key={group.group} className="tl-add-group">
-              <div className="text-fg3 text-xxs tracking-widest">{group.group}</div>
-              <div className="tl-add-items">
-                {group.params.map((param) => (
-                  <button
-                    key={param.path}
-                    type="button"
-                    className="tl-add-item text-xxs uppercase"
-                    disabled={existing.has(param.path)}
-                    title={param.path + ' :: ' + param.cost.toUpperCase()}
-                    onClick={() => add(param.path)}
-                  >
-                    {existing.has(param.path) ? '[x] ' : '[ ] '}
-                    {param.label}
-                  </button>
-                ))}
+          {/* Group headers only until you open one. Ninety-odd parameters in a
+              single wall is not a menu, it is a haystack. */}
+          {groups.map((group) => {
+            const isOpen = openGroup === group.group
+            const used = group.params.filter((param) => existing.has(param.path)).length
+            return (
+              <div key={group.group} className="tl-add-group">
+                <button
+                  type="button"
+                  className="tl-add-group-head text-xxs tracking-widest"
+                  aria-expanded={isOpen}
+                  onClick={() => setOpenGroup(isOpen ? null : group.group)}
+                >
+                  <span className="text-fg2">{isOpen ? '[-]' : '[+]'}</span>{' '}
+                  <span className={isOpen ? 'text-fg' : 'text-fg2'}>{group.group}</span>
+                  <span className="text-fg3">
+                    {' '}
+                    {used > 0 ? used + '/' + group.params.length : group.params.length}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="tl-add-items">
+                    {group.params.map((param) => (
+                      <button
+                        key={param.path}
+                        type="button"
+                        className="tl-add-item text-xxs uppercase"
+                        disabled={existing.has(param.path)}
+                        title={param.path + ' :: ' + param.cost.toUpperCase()}
+                        onClick={() => add(param.path)}
+                      >
+                        {existing.has(param.path) ? '[x] ' : '[ ] '}
+                        {param.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
