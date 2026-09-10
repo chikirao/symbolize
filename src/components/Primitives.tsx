@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { scrambleSubtree, scrambleText } from '../ui/scramble'
+import { useT } from '../i18n'
 
 /* ------------------------------------------------------------------ */
 /* ASCII frame                                                         */
@@ -14,6 +15,8 @@ export function AsciiBox(props: {
   bodyClassName?: string
   children?: React.ReactNode
 }) {
+  const t = useT()
+  const title = typeof props.title === 'string' ? t(props.title) : props.title
   return (
     <div className={'ascii-box ' + (props.className || '')}>
       <span className="ascii-corner tl" aria-hidden="true">
@@ -31,7 +34,7 @@ export function AsciiBox(props: {
       {(props.title !== undefined || props.right !== undefined) && (
         <div className="ascii-box-header flex items-center justify-between px-2 -mt-[9px] pointer-events-none select-none">
           <span className="bg-black px-1 text-fg text-xs2 tracking-widest pointer-events-auto">
-            {props.title}
+            {title}
           </span>
           <span className="bg-black px-1 text-fg2 text-xs2 pointer-events-auto">{props.right}</span>
         </div>
@@ -84,6 +87,7 @@ export function Scramble(props: {
 export function Hint(props: { text: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const timer = useRef<number | undefined>(undefined)
+  const text = useT()(props.text)
   return (
     <span
       className="hint-trigger relative"
@@ -109,9 +113,9 @@ export function Hint(props: { text: string; children: React.ReactNode }) {
       {props.children}
       {open && (
         <span className="tip ascii-art left-0 top-full mt-1 text-xs2">
-          <span className="tip-frame block text-fg3">┌{'─'.repeat(props.text.length + 2)}┐</span>
-          <span className="tip-copy block">│ {props.text} │</span>
-          <span className="tip-frame block text-fg3">└{'─'.repeat(props.text.length + 2)}┘</span>
+          <span className="tip-frame block text-fg3">┌{'─'.repeat(text.length + 2)}┐</span>
+          <span className="tip-copy block">│ {text} │</span>
+          <span className="tip-frame block text-fg3">└{'─'.repeat(text.length + 2)}┘</span>
         </span>
       )}
     </span>
@@ -127,13 +131,14 @@ export function Row(props: {
   /** hidden while the panel is in its plain state — see ControlPanel */
   advanced?: boolean
 }) {
+  const t = useT()
   const label = (
     <span
       className="row-label text-xs2 uppercase"
       onDoubleClick={props.onReset}
-      title={props.onReset ? 'double-click to reset' : undefined}
+      title={props.onReset ? t('double-click to reset') : undefined}
     >
-      {props.label}
+      {t(props.label)}
     </span>
   )
   return (
@@ -156,18 +161,20 @@ export function Toggle(props: {
   /** keep the label for screen readers but draw only the box */
   hideLabel?: boolean
 }) {
+  const t = useT()
+  const label = props.label ? t(props.label) : props.label
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={props.checked}
-      aria-label={props.label}
+      aria-label={label}
       disabled={props.disabled}
       className={'tog text-xs2 ' + (props.disabled ? 'text-off cursor-not-allowed' : '')}
       onClick={() => !props.disabled && props.onChange(!props.checked)}
     >
       {props.checked ? '[x]' : '[ ]'}
-      {props.label && !props.hideLabel ? ' ' + props.label : ''}
+      {label && !props.hideLabel ? ' ' + label : ''}
     </button>
   )
 }
@@ -178,6 +185,7 @@ export function RadioRow<T extends string>(props: {
   onChange: (v: T) => void
   columns?: number
 }) {
+  const t = useT()
   return (
     <div
       className="radio-row pl-3 grid gap-x-2"
@@ -197,7 +205,7 @@ export function RadioRow<T extends string>(props: {
           onClick={() => props.onChange(o.value)}
         >
           {props.value === o.value ? '(*) ' : '( ) '}
-          {o.label}
+          {t(o.label)}
         </button>
       ))}
     </div>
@@ -215,6 +223,7 @@ export function SelectControl<T extends string>(props: {
   ariaLabel?: string
   width?: number
 }) {
+  const t = useT()
   const ref = useRef<HTMLSpanElement>(null)
   const prev = useRef(props.value)
   useEffect(() => {
@@ -222,11 +231,11 @@ export function SelectControl<T extends string>(props: {
     prev.current = props.value
     const el = ref.current
     if (!el) return
-    const label = props.options.find((o) => o.value === props.value)?.label ?? props.value
+    const label = t(props.options.find((o) => o.value === props.value)?.label ?? props.value)
     return scrambleText(el, label, 200, label.length * 131)
-  }, [props.value, props.options])
+  }, [props.value, props.options, t])
 
-  const current = props.options.find((o) => o.value === props.value)?.label ?? props.value
+  const current = t(props.options.find((o) => o.value === props.value)?.label ?? props.value)
 
   return (
     <span className="sel-wrap text-xs2 relative">
@@ -239,13 +248,13 @@ export function SelectControl<T extends string>(props: {
       </span>
       <select
         className="sel absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-        aria-label={props.ariaLabel}
+        aria-label={props.ariaLabel ? t(props.ariaLabel) : undefined}
         value={props.value}
         onChange={(e) => props.onChange(e.target.value as T)}
       >
         {props.options.map((o) => (
           <option key={o.value} value={o.value}>
-            {o.label}
+            {t(o.label)}
           </option>
         ))}
       </select>
@@ -267,6 +276,7 @@ export function NumberField(props: {
   width?: number
   ariaLabel?: string
 }) {
+  const t = useT()
   const [text, setText] = useState(() => format(props.value, props.decimals))
   const focused = useRef(false)
 
@@ -293,7 +303,7 @@ export function NumberField(props: {
       style={{ width: (props.width || 60) + 'px' }}
       type="number"
       inputMode="decimal"
-      aria-label={props.ariaLabel}
+      aria-label={props.ariaLabel ? t(props.ariaLabel) : undefined}
       value={text}
       step={props.step}
       min={props.min}
@@ -327,13 +337,14 @@ export function ColorField(props: {
   /** swatch only — for rows too narrow to also carry the hex */
   compact?: boolean
 }) {
+  const t = useT()
   return (
     <label className="color-field text-xs2 shrink-0" title={props.value}>
       <span className="color-swatch" style={{ background: props.value }} />
       {!props.compact && <span className="text-fg2 uppercase">{props.value}</span>}
       <input
         type="color"
-        aria-label={props.ariaLabel || 'colour'}
+        aria-label={t(props.ariaLabel || 'colour')}
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
       />
@@ -355,6 +366,7 @@ export function Section(props: {
   /** hidden wholesale while the panel is in its plain state */
   advanced?: boolean
 }) {
+  const title = useT()(props.title)
   const titleRef = useRef<HTMLSpanElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const mounted = useRef(false)
@@ -365,8 +377,8 @@ export function Section(props: {
     }
     const el = titleRef.current
     if (!el) return
-    return scrambleText(el, props.title, 190, props.title.length * 977)
-  }, [props.open, props.title])
+    return scrambleText(el, title, 190, title.length * 977)
+  }, [props.open, title])
 
   // the whole panel resolves out of noise, not just its heading
   useEffect(() => {
@@ -386,7 +398,7 @@ export function Section(props: {
       >
         <span className="text-fg2 group-hover:text-fg text-xs2">{props.open ? '[-]' : '[+]'}</span>
         <span ref={titleRef} className="text-fg text-xs2 tracking-widest uppercase">
-          {props.title}
+          {title}
         </span>
         <span className="ml-auto text-fg3 text-xxs">{props.badge}</span>
       </button>
@@ -400,9 +412,10 @@ export function Section(props: {
 }
 
 export function Divider(props: { label?: string }) {
+  const t = useT()
   return (
     <div className="hr text-xxs my-1 select-none">
-      {props.label ? `── ${props.label} ` : ''}
+      {props.label ? `── ${t(props.label)} ` : ''}
       {'─'.repeat(60)}
     </div>
   )

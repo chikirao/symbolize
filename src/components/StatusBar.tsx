@@ -2,24 +2,28 @@ import React, { useEffect, useRef } from 'react'
 import { useEditor } from '../store/editorStore'
 import { AsciiMeter } from './SliderControl'
 import { scrambleText } from '../ui/scramble'
+import { useMessageT, useT } from '../i18n'
 
 export function StatusBar(props: { compact?: boolean; className?: string } = {}) {
+  const t = useT()
+  const tm = useMessageT()
   const status = useEditor((s) => s.status)
   const stats = useEditor((s) => s.stats)
   const image = useEditor((s) => s.image)
   const view = useEditor((s) => s.view)
   const interacting = useEditor((s) => s.interacting)
 
+  const message = tm(status.message)
   const msgRef = useRef<HTMLSpanElement>(null)
-  const lastMsg = useRef(status.message)
+  const lastMsg = useRef(message)
 
   useEffect(() => {
-    if (lastMsg.current === status.message) return
-    lastMsg.current = status.message
+    if (lastMsg.current === message) return
+    lastMsg.current = message
     const el = msgRef.current
     if (!el) return
-    return scrambleText(el, status.message, 220, status.message.length * 31)
-  }, [status.message])
+    return scrambleText(el, message, 220, message.length * 31)
+  }, [message])
 
   const busy = status.kind === 'busy'
 
@@ -27,14 +31,14 @@ export function StatusBar(props: { compact?: boolean; className?: string } = {})
     return (
       <div className={'mobile-status-bar ' + (props.className || '')}>
         <span className="mobile-status-message">
-          {status.kind === 'error' ? 'ERROR :: ' : ''}
-          <span ref={msgRef}>{status.message}</span>
+          {status.kind === 'error' ? t('ERROR') + ' :: ' : ''}
+          <span ref={msgRef}>{message}</span>
         </span>
         {busy && status.progress >= 0 ? (
           <span className="text-fg">{Math.round(status.progress * 100)}%</span>
         ) : (
           <span className="mobile-status-stats">
-            {stats ? `${stats.elements} SYM` : '0 SYM'} :: {Math.round(view.zoom * 100)}%
+            {(stats ? stats.elements : 0) + ' ' + t('SYM')} :: {Math.round(view.zoom * 100)}%
           </span>
         )}
       </div>
@@ -48,8 +52,8 @@ export function StatusBar(props: { compact?: boolean; className?: string } = {})
           status.kind === 'error' ? 'text-fg' : status.kind === 'busy' ? 'text-fg' : 'text-fg2'
         }
       >
-        {status.kind === 'error' ? '[ ERROR ] ' : ''}
-        <span ref={msgRef}>{status.message}</span>
+        {status.kind === 'error' ? '[ ' + t('ERROR') + ' ] ' : ''}
+        <span ref={msgRef}>{message}</span>
       </span>
 
       {busy && status.progress >= 0 && (
@@ -61,16 +65,20 @@ export function StatusBar(props: { compact?: boolean; className?: string } = {})
 
       <span className="ml-auto flex items-center gap-2 text-fg2">
         <span className="text-fg3">::</span>
-        <span>{image ? `${image.width}x${image.height}` : 'NO SOURCE'}</span>
+        <span>{image ? `${image.width}x${image.height}` : t('NO SOURCE')}</span>
         <span className="text-fg3">::</span>
-        <span>{stats ? `${stats.elements} SYMBOLS` : '0 SYMBOLS'}</span>
+        {/* the short unit in both languages: "5041 СИМВОЛЫ" is the wrong case
+            in Russian, and a status bar abbreviates anyway */}
+        <span>{(stats ? stats.elements : 0) + ' ' + t('SYM')}</span>
         <span className="text-fg3">::</span>
         <span>{stats ? `${stats.ms.toFixed(1)}ms` : '—'}</span>
         <span className="text-fg3">::</span>
-        <span>ZOOM {Math.round(view.zoom * 100)}%</span>
+        <span>
+          {t('ZOOM')} {Math.round(view.zoom * 100)}%
+        </span>
         <span className="text-fg3">::</span>
         <span className={interacting ? 'text-fg' : 'text-fg3'}>
-          {interacting ? 'DRAFT' : view.quality.toUpperCase()}
+          {interacting ? t('DRAFT') : t(view.quality.toUpperCase())}
         </span>
       </span>
     </div>

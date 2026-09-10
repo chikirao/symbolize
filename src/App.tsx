@@ -13,6 +13,7 @@ import { StatusBar } from './components/StatusBar'
 import { MobileWorkspace } from './components/MobileWorkspace'
 import { AsciiBox } from './components/Primitives'
 import { armIntro, runIntro } from './ui/intro'
+import { join, tr, useT } from './i18n'
 import { loadDemoImage } from './engine/demo'
 import { decodeMediaFile, isVideoFile, looksAnimated, releaseFrames } from './engine/media'
 import { createSequence } from './engine/sequence'
@@ -24,6 +25,7 @@ import {
 } from './engine/imageLoad'
 
 export default function App() {
+  const t = useT()
   const fileRef = useRef<HTMLInputElement>(null)
   const [dropping, setDropping] = useState(false)
   const [mobileLayout, setMobileLayout] = useState(() =>
@@ -114,7 +116,7 @@ export default function App() {
       } catch (err) {
         setStatus({
           kind: 'error',
-          message: String((err as Error).message || 'IMAGE LOAD FAILED'),
+          message: String((err as Error).message || tr('IMAGE LOAD FAILED')),
           progress: -1,
         })
       }
@@ -136,7 +138,11 @@ export default function App() {
       decodeJob.current = job
       const anim = useAnim.getState()
       const kind = isVideoFile(file) ? 'VIDEO' : 'ANIMATION'
-      setStatus({ kind: 'busy', message: 'DECODING ' + kind + '...', progress: 0 })
+      setStatus({
+        kind: 'busy',
+        message: tr('DECODING ' + kind + '...'),
+        progress: 0,
+      })
       try {
         const media = await decodeMediaFile(file, {
           maxSide: anim.importSide,
@@ -159,20 +165,18 @@ export default function App() {
         useAnim.getState().syncToSequence(sequence.frames.length, sequence.fps)
         setStatus({
           kind: 'ready',
-          message:
-            'SEQUENCE :: ' +
-            sequence.frames.length +
-            ' FRAMES @ ' +
-            sequence.fps +
-            ' FPS' +
-            (media.truncated ? ' :: TRUNCATED' : ''),
+          message: join(
+            tr('SEQUENCE'),
+            sequence.frames.length + ' ' + tr('FRAMES') + ' @ ' + sequence.fps + ' FPS',
+            media.truncated && tr('TRUNCATED'),
+          ),
           progress: -1,
         })
       } catch (err) {
         if (job.signal.aborted) return
         setStatus({
           kind: 'error',
-          message: String((err as Error).message || 'MEDIA DECODE FAILED'),
+          message: String((err as Error).message || tr('MEDIA DECODE FAILED')),
           progress: -1,
         })
       } finally {
@@ -223,7 +227,7 @@ export default function App() {
     } catch (err) {
       setStatus({
         kind: 'error',
-        message: String((err as Error).message || 'CLIPBOARD BLOCKED') + ' :: TRY CTRL+V',
+        message: join(String((err as Error).message || tr('CLIPBOARD BLOCKED')), 'CTRL+V'),
         progress: -1,
       })
     }
@@ -350,13 +354,10 @@ export default function App() {
       {dropping && (
         <div className="fixed inset-0 z-[200] bg-black/85 flex items-center justify-center pointer-events-none">
           <div className="ascii-art text-fg text-center">
-            {`┌──────────────────────────────────┐
-│                                  │
-│      DROP IMAGE OR VIDEO IN      │
-│                                  │
-│   JPG PNG WEBP / GIF MP4 WEBM    │
-│                                  │
-└──────────────────────────────────┘`}
+            <div className="text-fg3">{'┌' + '─'.repeat(38) + '┐'}</div>
+            <div className="py-2 tracking-widest">{t('DROP IMAGE OR VIDEO IN')}</div>
+            <div className="text-fg2 text-xs2">JPG PNG WEBP / GIF MP4 WEBM</div>
+            <div className="text-fg3 pt-2">{'└' + '─'.repeat(38) + '┘'}</div>
           </div>
         </div>
       )}

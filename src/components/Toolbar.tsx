@@ -5,6 +5,8 @@ import { replayIntro } from '../ui/intro'
 import { loadDemoImage } from '../engine/demo'
 import { buildFilename, downloadBlob, renderExport } from '../engine/export'
 import type { PreviewQuality } from '../types/editor'
+import { useUi } from '../store/uiStore'
+import { join, tr, useT } from '../i18n'
 
 interface Item {
   label: string
@@ -15,6 +17,7 @@ interface Item {
 }
 
 function Menu(props: { label: string; items: Item[] }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -42,7 +45,8 @@ function Menu(props: { label: string; items: Item[] }) {
     }
   }, [open])
 
-  const width = Math.max(...props.items.map((i) => i.label.length), 10) + 4
+  const items = props.items.map((i) => ({ ...i, label: t(i.label) }))
+  const width = Math.max(...items.map((i) => i.label.length), 10) + 4
 
   return (
     <div ref={ref} className="relative">
@@ -54,7 +58,7 @@ function Menu(props: { label: string; items: Item[] }) {
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        {props.label}
+        {t(props.label)}
       </button>
       {open && (
         <div
@@ -63,7 +67,7 @@ function Menu(props: { label: string; items: Item[] }) {
           className="absolute left-0 top-full mt-[2px] z-50 bg-black border border-line2 py-1 panel-reveal"
           style={{ minWidth: width + 'ch' }}
         >
-          {props.items.map((it, i) =>
+          {items.map((it, i) =>
             it.divider ? (
               <div key={i} className="hr text-xxs px-2 select-none">
                 {'─'.repeat(width)}
@@ -97,7 +101,39 @@ function Menu(props: { label: string; items: Item[] }) {
   )
 }
 
+/**
+ * Language, first thing on the bar and left of every menu.
+ *
+ * Two words rather than a checkbox: which one is live is legible at a glance,
+ * and the one you want is always a single click away — a toggle you have to
+ * read the state of first is one step slower every time.
+ */
+function LangSwitch() {
+  const lang = useUi((s) => s.lang)
+  const setLang = useUi((s) => s.setLang)
+  return (
+    <div className="lang-switch text-xs2" role="radiogroup" aria-label="interface language">
+      {(['en', 'ru'] as const).map((code) => (
+        <button
+          key={code}
+          type="button"
+          role="radio"
+          aria-checked={lang === code}
+          className={'lang-opt' + (lang === code ? ' is-on' : '')}
+          onClick={() => setLang(code)}
+        >
+          {code.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) {
+  const t = useT()
+  const tips = useUi((s) => s.tips)
+  const setTips = useUi((s) => s.setTips)
+  const resetLayout = useUi((s) => s.resetLayout)
   const store = useEditor
   const image = useEditor((s) => s.image)
   const view = useEditor((s) => s.view)
@@ -133,17 +169,27 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
       downloadBlob(res.blob, buildFilename('png'))
       setStatus({
         kind: 'ready',
-        message: `EXPORT OK :: ${res.width}x${res.height} :: ${res.stats.elements} SYMBOLS`,
+        message: join(
+          tr('EXPORT OK'),
+          `${res.width}x${res.height}`,
+          `${res.stats.elements} ${tr('SYMBOLS')}`,
+        ),
         progress: -1,
       })
     } catch (err) {
-      setStatus({ kind: 'error', message: 'ERROR :: ' + String((err as Error).message), progress: -1 })
+      setStatus({
+        kind: 'error',
+        message: join(tr('ERROR'), String((err as Error).message)),
+        progress: -1,
+      })
     }
   }
 
   return (
     <div className="app-toolbar flex items-center gap-4 px-3 h-[26px] border-b border-line shrink-0">
       <span className="app-brand text-fg text-xs2 tracking-[0.25em] select-none">symbolize</span>
+
+      <LangSwitch />
 
       <div className="desktop-toolbar-nav flex items-center gap-1">
         <Menu
@@ -182,7 +228,9 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
             },
             { label: '', divider: true },
             ...(['low', 'medium', 'high'] as PreviewQuality[]).map((q) => ({
-              label: 'QUALITY ' + q.toUpperCase(),
+              // pre-translated: the menu would otherwise look up the whole
+              // "QUALITY MEDIUM" phrase, which is two words in one entry
+              label: t('QUALITY') + ' ' + t(q.toUpperCase()),
               checked: view.quality === q,
               onClick: () => setView({ quality: q }),
             })),
@@ -192,6 +240,12 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
               checked: view.showAdvanced,
               onClick: () => setView({ showAdvanced: !view.showAdvanced }),
             },
+            {
+              label: 'HOVER DESCRIPTIONS',
+              checked: tips,
+              onClick: () => setTips(!tips),
+            },
+            { label: 'RESET PANEL LAYOUT', onClick: resetLayout },
             { label: '', divider: true },
             { label: 'REPLAY INTRO', onClick: () => void replayIntro() },
           ]}
@@ -208,13 +262,13 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
 
       <div className="mobile-toolbar-actions ml-auto">
         <button type="button" className="btn" onClick={props.onPickFile}>
-          LOAD
+          {t('LOAD')}
         </button>
         <button type="button" className="btn" onClick={randomizeSeed}>
-          RND
+          {t('RND')}
         </button>
         <button type="button" className="btn" onClick={requestFit}>
-          FIT
+          {t('FIT')}
         </button>
         <button
           type="button"
@@ -222,16 +276,16 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
           aria-pressed={view.showOriginal}
           onClick={() => setView({ showOriginal: !view.showOriginal, beforeAfter: false })}
         >
-          ORIG
+          {t('ORIG')}
         </button>
       </div>
 
       <div className="desktop-toolbar-actions ml-auto flex items-center gap-3">
         <button type="button" className="btn text-xxs" onClick={randomizeSeed}>
-          RANDOMIZE
+          {t('RANDOMIZE')}
         </button>
         <button type="button" className="btn text-xxs" onClick={requestFit}>
-          FIT
+          {t('FIT')}
         </button>
         <button
           type="button"
@@ -240,7 +294,7 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
         >
           100%
         </button>
-        <span className="text-fg3 text-xxs select-none">LOCAL // NO UPLOAD</span>
+        <span className="text-fg3 text-xxs select-none">{t('LOCAL // NO UPLOAD')}</span>
       </div>
     </div>
   )

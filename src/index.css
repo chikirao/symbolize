@@ -591,6 +591,34 @@
     display: none !important;
   }
 
+  /* Language sits left of every menu, so it reads as a property of the whole
+     interface rather than one more command in the FILE/VIEW row. */
+  .lang-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+  }
+  .lang-opt {
+    color: var(--fg3);
+    cursor: pointer;
+    letter-spacing: 0.08em;
+  }
+  .lang-opt:hover {
+    color: var(--fg2);
+  }
+  .lang-opt.is-on {
+    color: var(--fg);
+    text-decoration: underline;
+  }
+  .lang-switch .lang-opt + .lang-opt::before {
+    content: '/';
+    color: var(--line2);
+    text-decoration: none;
+    display: inline-block;
+    margin-right: 4px;
+  }
+
   .param-mode-bar {
     position: sticky;
     top: 0;

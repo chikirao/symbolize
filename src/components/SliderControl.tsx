@@ -1,5 +1,6 @@
 import React from 'react'
 import { NumberField, format } from './Primitives'
+import { useT } from '../i18n'
 
 /**
  * Every ASCII meter is the same length. It used to be measured per slider,
@@ -33,6 +34,7 @@ export interface SliderProps {
 }
 
 export function SliderControl(props: SliderProps) {
+  const tx = useT()
   const { value, min, max } = props
   const step = props.step ?? 1
   const chars = BAR_CHARS
@@ -58,9 +60,15 @@ export function SliderControl(props: SliderProps) {
         <span
           className="text-xs2 uppercase text-fg2 group-hover:text-fg truncate select-none"
           onDoubleClick={props.onReset}
-          title={props.hint || (props.onReset ? 'double-click label to reset' : undefined)}
+          title={
+            props.hint
+              ? tx(props.hint)
+              : props.onReset
+                ? tx('double-click label to reset')
+                : undefined
+          }
         >
-          {props.label}
+          {tx(props.label)}
         </span>
         <span className="flex items-baseline">
           {props.marker}
@@ -87,7 +95,7 @@ export function SliderControl(props: SliderProps) {
           max={max}
           step={step}
           value={value}
-          aria-label={props.label}
+          aria-label={tx(props.label)}
           aria-valuetext={format(value, props.decimals) + (props.suffix || '')}
           onChange={(e) => props.onChange(parseFloat(e.target.value))}
           onDoubleClick={props.onReset}
