@@ -2,7 +2,8 @@
 
 Instructions for AI coding agents working in this repo. Human-facing docs (how to run, algorithm,
 export, limitations, hotkeys — in Russian) live in [README.md](README.md); read that first for
-product behaviour. This file is about how to change the code safely.
+product behaviour. [docs/ANIMATION.md](docs/ANIMATION.md) and [docs/UI.md](docs/UI.md) are the
+build records for the animation mode and the interface work that followed it. This file is about how to change the code safely.
 
 ## Commands
 
@@ -83,7 +84,8 @@ src/
   components/     UI: toolbar, canvas viewport, side panels, timeline, ASCII primitives
   engine/         pure TS render pipeline (see below)
     encode/       GIF / APNG / WebM / ZIP writers, no dependencies
-  store/          Zustand stores (editorStore.ts, animStore.ts) + dotted-path helpers (path.ts)
+  i18n/           dict.ts (RU strings), paramDocs.ts (hover descriptions), guide.ts (walkthrough)
+  store/          Zustand stores (editorStore.ts, animStore.ts, uiStore.ts) + path.ts
   types/editor.ts EditorSettings — the one interface that shapes the whole UI + engine
   types/anim.ts   AnimationProject — tracks, keyframes, transport
   ui/             text-scramble + boot/intro animation utilities (also React-free)
@@ -133,6 +135,32 @@ SOURCE MEDIA   @  FRAME           ->  SOURCE MAPS (cached)   -> the usual pipeli
 * New animation parameters must be **neutral at their defaults** so existing presets are unchanged,
   and must not consume new values from the per-cell PRNG — the draw order in `calculateElements` is
   an invariant (see Determinism above).
+
+### Interface chrome: language, descriptions, layout
+
+Full notes in [docs/UI.md](docs/UI.md). The rules that bite:
+
+* **Translation is keyed on the English string itself** — `t('CELL SIZE')`, with `src/i18n/dict.ts`
+  mapping that literal to Russian. There is no key namespace to keep in sync, and an untranslated
+  string renders in English rather than blank. Do not invent a key that is not an exact UI literal.
+* Translate at the **primitive**, not the call site: `Row`, `SliderControl`, `Section`, `Toggle`,
+  `SelectControl`, `RadioRow`, `AsciiBox` and `Divider` already translate their own labels. A new
+  control that goes through them needs a dictionary entry and nothing else.
+* Two dictionary entries may not share a key with different meanings. When that happens, rename one
+  of the *English* strings rather than fudging the translation (that is why the symbol category is
+  `CORE` and the export panels say `OUTPUT`).
+* `engine/` has no React and must not import a store, so status labels are built in English and
+  translated where they are drawn, by `translateMessage` in `src/i18n/index.ts`.
+* **A new parameter needs three registrations, not two:** the field in `EditorSettings`, the entry
+  in `engine/animatable.ts` if it should be animatable, and a `{ en, ru }` entry in
+  `src/i18n/paramDocs.ts` keyed on its settings path. The description is keyed on the path, not the
+  label, and zone paths collapse (`zone.list.N.x` -> `zone.x`).
+* **`uiStore.ts` holds language, hover-description opt-in and panel geometry — never put any of it
+  in `editorStore`.** A saved preset must not carry someone's panel widths, and none of it should
+  re-render the canvas. It persists under its own `symbolize.ui.v1` key.
+* The desktop panel seams in `components/Panel.tsx` *are* the gutters; do not reintroduce a flex
+  `gap` between panels. A resize drag reads its starting size at pointer-down (an unsized panel is
+  whatever height its content made it) and listens on the window rather than capturing the pointer.
 
 `EditorSettings` ([types/editor.ts](src/types/editor.ts)) is the single source of truth for every
 tunable parameter. UI controls read/write it through dotted string paths (`setParam('grid.cellSize',
