@@ -46,8 +46,12 @@ interface AnimStore {
 
   /** decode settings for the next video / gif import */
   importSide: number
+  /** 0 = match the source's own frame rate */
   importFps: number
   importMaxFrames: number
+  /** seconds trimmed off the head, and the second to stop at (0 = the end) */
+  importTrimStart: number
+  importTrimEnd: number
 
   setProject: (p: AnimationProject) => void
   setFrame: (f: number) => void
@@ -64,7 +68,15 @@ interface AnimStore {
   /** matches the timeline to a freshly loaded video / gif */
   syncToSequence: (frames: number, fps: number) => void
 
-  setImport: (patch: Partial<{ importSide: number; importFps: number; importMaxFrames: number }>) => void
+  setImport: (
+    patch: Partial<{
+      importSide: number
+      importFps: number
+      importMaxFrames: number
+      importTrimStart: number
+      importTrimEnd: number
+    }>,
+  ) => void
   setOpen: (open: boolean) => void
   toggleOpen: () => void
   setAutoKey: (on: boolean) => void
@@ -93,8 +105,10 @@ export const useAnim = create<AnimStore>((set, get) => ({
   selected: null,
   clockToken: 0,
   importSide: 800,
-  importFps: 12,
+  importFps: 0,
   importMaxFrames: 240,
+  importTrimStart: 0,
+  importTrimEnd: 0,
 
   setProject: (project) =>
     set((s) => {

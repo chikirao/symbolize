@@ -142,6 +142,8 @@ export default function App() {
           maxSide: anim.importSide,
           maxFrames: anim.importMaxFrames,
           fps: anim.importFps,
+          trimStart: anim.importTrimStart,
+          trimEnd: anim.importTrimEnd,
           signal: job.signal,
           onProgress: (progress, message) =>
             setStatus({ kind: 'busy', message, progress }),

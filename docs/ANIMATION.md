@@ -155,11 +155,19 @@ instead of only gating them. One selection, two uses, no second picker UI.
       allocation pressure used to show up. Pixel-identical before and after.
 
 ### R3 — video import robustness
-- [ ] test a real camera mp4 (H.264, variable frame rate) rather than only our own WebM
-- [ ] fall back to `requestVideoFrameCallback` playback capture when seeking stalls or returns
-      duplicate frames — some encodes seek badly without an index
-- [ ] in / out trim points at decode time, so a 3-minute clip does not need all 240 frames
-- [ ] report decoded memory in the SOURCE panel and warn before a huge decode
+- [x] tested against a real H.264 mp4 (320x180, 3.08s) rather than only our own WebM: decodes,
+      seeks at ~10ms per frame, renders. **A duplicate-frame finding here was a misdiagnosis** —
+      12 of 36 sampled frames were identical, but both an rVFC probe and a fine-stepping probe
+      put the clip at a true 12fps, so the repeats are the clip's own static tail, not
+      over-sampling.
+- [x] `requestVideoFrameCallback` used two ways: to measure the source's own frame rate (the new
+      RATE AUTO default), and as a playback-capture fallback when a seek stalls. Verified the
+      rate probe on purpose-built clips: a 6fps source reads as 6, a 24fps source as 24, where
+      both used to be forced to 12 — over-sampling one and halving the motion of the other.
+- [x] in / out trim at decode time. Verified on a 4s 24fps clip: trimming to 1.0-2.0s yields
+      exactly 24 frames and the moving bar sits at the quarter-to-half of its travel.
+- [x] SOURCE panel reports the decode settings and what the last import cost
+      ("8 MB DECODED :: 36/36 FRAMES STAY PREPARED")
 
 ### R6 — density
 

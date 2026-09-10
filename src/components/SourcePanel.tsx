@@ -1,6 +1,9 @@
 import React, { useEffect, useRef } from 'react'
 import { useEditor } from '../store/editorStore'
-import { AsciiBox, Scramble } from './Primitives'
+import { AsciiBox, NumberField, Row, Scramble, SelectControl } from './Primitives'
+import { useAnim } from '../store/animStore'
+import { SEQUENCE_SIZES } from '../engine/media'
+import { residentFrames, sequenceBytes } from '../engine/sequence'
 import { loadDemoImage } from '../engine/demo'
 import { getSelectionMask } from '../engine/selection'
 
@@ -110,6 +113,96 @@ function MaskPreview() {
   )
 }
 
+/** How a clip will be taken apart, and what the last one cost. */
+function ImportSettings() {
+  const sequence = useEditor((s) => s.sequence)
+  const side = useAnim((s) => s.importSide)
+  const fps = useAnim((s) => s.importFps)
+  const maxFrames = useAnim((s) => s.importMaxFrames)
+  const trimStart = useAnim((s) => s.importTrimStart)
+  const trimEnd = useAnim((s) => s.importTrimEnd)
+  const setImport = useAnim((s) => s.setImport)
+
+  const mb = sequence ? Math.round(sequenceBytes(sequence) / 1048576) : 0
+  const resident = sequence ? residentFrames(sequence) : 0
+
+  return (
+    <div className="mt-1">
+      <div className="hr text-xxs my-1 select-none">── IMPORT {'─'.repeat(30)}</div>
+      <Row label="SIZE">
+        <SelectControl
+          value={String(side)}
+          width={11}
+          ariaLabel="decode size"
+          options={SEQUENCE_SIZES.map((o) => ({ value: String(o.side), label: o.label }))}
+          onChange={(v) => setImport({ importSide: Number(v) })}
+        />
+      </Row>
+      <Row label="RATE" hint="0 reads the clip's own frame rate instead of guessing">
+        <NumberField
+          value={fps}
+          min={0}
+          max={60}
+          step={1}
+          decimals={0}
+          width={46}
+          ariaLabel="import frames per second, 0 for auto"
+          onChange={(v) => setImport({ importFps: Math.max(0, Math.round(v)) })}
+        />
+        <span className="text-fg3 text-xxs">{fps === 0 ? 'AUTO' : 'FPS'}</span>
+      </Row>
+      <Row label="MAX FRAMES">
+        <NumberField
+          value={maxFrames}
+          min={2}
+          max={600}
+          step={1}
+          decimals={0}
+          width={52}
+          ariaLabel="maximum decoded frames"
+          onChange={(v) => setImport({ importMaxFrames: Math.round(v) })}
+        />
+      </Row>
+      <Row label="TRIM" hint="seconds: where to start, and where to stop (0 = the end)">
+        <NumberField
+          value={trimStart}
+          min={0}
+          max={3600}
+          step={0.1}
+          decimals={1}
+          width={46}
+          ariaLabel="trim start seconds"
+          onChange={(v) => setImport({ importTrimStart: Math.max(0, v) })}
+        />
+        <NumberField
+          value={trimEnd}
+          min={0}
+          max={3600}
+          step={0.1}
+          decimals={1}
+          width={46}
+          ariaLabel="trim end seconds"
+          onChange={(v) => setImport({ importTrimEnd: Math.max(0, v) })}
+        />
+      </Row>
+
+      <div className="text-fg3 text-xxs leading-snug mt-1">
+        {sequence ? (
+          <>
+            {sequence.frames.length} FRAMES :: {sequence.width}x{sequence.height} ::{' '}
+            {sequence.fps} FPS
+            <br />
+            {mb} MB DECODED :: {resident}/{sequence.frames.length} FRAMES STAY PREPARED
+            {sequence.truncated && <span className="text-fg2"> :: TRUNCATED</span>}
+          </>
+        ) : (
+          'DROP A VIDEO OR AN ANIMATED GIF TO GET A TIMELINE.'
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void }) {
   const image = useEditor((s) => s.image)
   const maps = useEditor((s) => s.maps)
@@ -182,6 +275,7 @@ export function SourcePanel(props: { onPickFile: () => void; onPaste: () => void
         </button>
       </div>
       <div className="text-fg3 text-xxs mt-1">DROP A FILE OR PRESS CTRL+V ANYWHERE</div>
+      <ImportSettings />
     </AsciiBox>
   )
 }

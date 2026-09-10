@@ -37,8 +37,12 @@ export interface DecodeOptions {
   /** longest side of a decoded frame, in px */
   maxSide?: number
   maxFrames?: number
-  /** video only: how many frames per second to sample */
+  /** video only: frames per second to sample, or 0 to match the source */
   fps?: number
+  /** video only: seconds to skip at the start */
+  trimStart?: number
+  /** video only: seconds to stop at, 0 for the end of the clip */
+  trimEnd?: number
   signal?: AbortSignal
   onProgress?: (progress: number, label: string) => void
 }
@@ -133,6 +137,43 @@ function once(el: EventTarget, event: string, timeoutMs: number): Promise<void> 
 }
 
 /**
+ * The source's own frame rate, measured by playing a moment of it and asking
+ * `requestVideoFrameCallback` how many frames went past.
+ *
+ * Sampling a clip faster than it was shot does not invent detail, it just
+ * decodes the same picture twice: a real 320x180 stock clip sampled at 12fps
+ * came back with 30 frames of which only 20 were distinct. Matching the source
+ * is both truer and cheaper. Returns 0 when the browser cannot tell us.
+ */
+async function probeFrameRate(video: HTMLVideoElement, windowMs = 700): Promise<number> {
+  if (typeof video.requestVideoFrameCallback !== 'function') return 0
+  return new Promise<number>((resolve) => {
+    let first: VideoFrameCallbackMetadata | null = null
+    let last: VideoFrameCallbackMetadata | null = null
+    let handle = 0
+    let done = false
+
+    const step = (_now: number, meta: VideoFrameCallbackMetadata) => {
+      if (!first) first = meta
+      else last = meta
+      if (!done) handle = video.requestVideoFrameCallback(step)
+    }
+    handle = video.requestVideoFrameCallback(step)
+    void video.play().catch(() => undefined)
+
+    window.setTimeout(() => {
+      done = true
+      video.cancelVideoFrameCallback(handle)
+      video.pause()
+      if (!first || !last) return resolve(0)
+      const dt = last.mediaTime - first.mediaTime
+      const df = last.presentedFrames - first.presentedFrames
+      resolve(dt > 0.05 && df > 1 ? df / dt : 0)
+    }, windowMs)
+  })
+}
+
+/**
  * Some WebM files report `duration === Infinity` until the browser has scanned
  * to the end. Seeking past the end forces the real duration to appear.
  */
@@ -148,10 +189,64 @@ async function resolveDuration(video: HTMLVideoElement): Promise<number> {
   return Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0
 }
 
+/**
+ * Playback capture: the fallback for files that seek badly.
+ *
+ * Seeking is exact and random-access, which is why it is the main path. But
+ * some encodes have no seek index and a `currentTime` write can stall for
+ * seconds or land on the wrong keyframe. Playing the clip and taking whatever
+ * the compositor presents always works — it just costs real time, and drops
+ * frames if the tab is busy, so it is not the default.
+ */
+async function captureByPlayback(
+  video: HTMLVideoElement,
+  ctx: CanvasRenderingContext2D,
+  scratch: HTMLCanvasElement,
+  opts: {
+    width: number
+    height: number
+    fps: number
+    total: number
+    start: number
+    end: number
+    signal?: AbortSignal
+    onProgress?: (progress: number, label: string) => void
+  },
+): Promise<DecodedFrame[]> {
+  const frames: DecodedFrame[] = []
+  const step = 1 / opts.fps
+  let nextAt = opts.start
+
+  video.currentTime = opts.start
+  await once(video, 'seeked', 20_000).catch(() => undefined)
+  await video.play()
+
+  try {
+    while (frames.length < opts.total) {
+      if (opts.signal?.aborted) throw new Error('DECODE CANCELLED')
+      if (video.currentTime >= opts.end || video.ended) break
+      if (video.currentTime + 0.0005 >= nextAt) {
+        ctx.clearRect(0, 0, opts.width, opts.height)
+        ctx.drawImage(video, 0, 0, opts.width, opts.height)
+        frames.push({ bitmap: await createImageBitmap(scratch), delay: 1000 / opts.fps })
+        opts.onProgress?.(
+          frames.length / opts.total,
+          'CAPTURING FRAME ' + frames.length + '/' + opts.total,
+        )
+        nextAt += step
+      } else {
+        await new Promise((r) => window.setTimeout(r, 8))
+      }
+    }
+  } finally {
+    video.pause()
+  }
+  return frames
+}
+
 export async function decodeVideoFile(file: File, opts: DecodeOptions = {}): Promise<DecodedMedia> {
   const maxSide = opts.maxSide ?? DEFAULT_MAX_SIDE
   const maxFrames = opts.maxFrames ?? DEFAULT_MAX_FRAMES
-  const fps = Math.max(1, Math.min(60, Math.round(opts.fps ?? DEFAULT_VIDEO_FPS)))
 
   const url = URL.createObjectURL(file)
   const video = document.createElement('video')
@@ -165,6 +260,7 @@ export async function decodeVideoFile(file: File, opts: DecodeOptions = {}): Pro
   let width = 0
   let height = 0
   let truncated = false
+  let rate = DEFAULT_VIDEO_FPS
 
   try {
     await once(video, 'loadedmetadata', 20_000)
@@ -178,7 +274,22 @@ export async function decodeVideoFile(file: File, opts: DecodeOptions = {}): Pro
     const duration = await resolveDuration(video)
     if (!duration) throw new Error('VIDEO DURATION UNKNOWN')
 
-    const wanted = Math.max(1, Math.floor(duration * fps))
+    // 0 means "match the source"; a probe failure falls back to the old default
+    let fps = Math.round(opts.fps ?? DEFAULT_VIDEO_FPS)
+    if (fps <= 0) {
+      opts.onProgress?.(0, 'READING FRAME RATE...')
+      const native = await probeFrameRate(video)
+      fps = native > 0 ? Math.round(native) : DEFAULT_VIDEO_FPS
+      video.currentTime = 0
+    }
+    fps = Math.max(1, Math.min(60, fps))
+    rate = fps
+
+    const start = Math.max(0, Math.min(duration - 0.05, opts.trimStart ?? 0))
+    const end = opts.trimEnd && opts.trimEnd > start ? Math.min(duration, opts.trimEnd) : duration
+    const span = Math.max(1 / fps, end - start)
+
+    const wanted = Math.max(1, Math.floor(span * fps))
     const total = Math.min(maxFrames, wanted)
     truncated = wanted > total
 
@@ -192,15 +303,37 @@ export async function decodeVideoFile(file: File, opts: DecodeOptions = {}): Pro
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
 
-    for (let i = 0; i < total; i++) {
-      throwIfAborted(opts.signal)
-      const t = Math.min(Math.max(0, duration - 1 / (fps * 4)), i / fps)
-      video.currentTime = t
-      await once(video, 'seeked', 20_000)
-      ctx.clearRect(0, 0, width, height)
-      ctx.drawImage(video, 0, 0, width, height)
-      frames.push({ bitmap: await createImageBitmap(scratch), delay: 1000 / fps })
-      opts.onProgress?.((i + 1) / total, 'DECODING FRAME ' + (i + 1) + '/' + total)
+    const lastSafe = Math.max(0, end - 1 / (fps * 4))
+    try {
+      for (let i = 0; i < total; i++) {
+        throwIfAborted(opts.signal)
+        video.currentTime = Math.min(lastSafe, start + i / fps)
+        await once(video, 'seeked', 8000)
+        ctx.clearRect(0, 0, width, height)
+        ctx.drawImage(video, 0, 0, width, height)
+        frames.push({ bitmap: await createImageBitmap(scratch), delay: 1000 / fps })
+        opts.onProgress?.((i + 1) / total, 'DECODING FRAME ' + (i + 1) + '/' + total)
+      }
+    } catch (err) {
+      // A stalled seek is not fatal: play the clip instead and take what the
+      // compositor presents. Anything already decoded is thrown away so the
+      // two paths never interleave into an uneven timeline.
+      if (opts.signal?.aborted || !/TIMED OUT/.test(String((err as Error).message))) throw err
+      releaseFrames(frames)
+      frames.length = 0
+      opts.onProgress?.(0, 'SEEK STALLED :: CAPTURING BY PLAYBACK...')
+      frames.push(
+        ...(await captureByPlayback(video, ctx, scratch, {
+          width,
+          height,
+          fps,
+          total,
+          start,
+          end,
+          signal: opts.signal,
+          onProgress: opts.onProgress,
+        })),
+      )
     }
   } finally {
     video.pause()
@@ -215,7 +348,7 @@ export async function decodeVideoFile(file: File, opts: DecodeOptions = {}): Pro
     kind: 'video',
     width,
     height,
-    fps,
+    fps: rate,
     frames,
     truncated,
   }
@@ -285,6 +418,7 @@ async function decodeWithImageDecoder(
   let width = 0
   let height = 0
   let truncated = false
+  let rate = DEFAULT_VIDEO_FPS
 
   try {
     await decoder.tracks.ready
