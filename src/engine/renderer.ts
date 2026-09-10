@@ -215,6 +215,13 @@ export function calculateElements(
   const zoneTintsColour = zoneOn && (zn.hueShift !== 0 || zn.saturation !== 0)
   const zoneAdj = { hueShift: 0, saturation: 0, brightness: 0 }
 
+  // The outline is only built when something actually asks for it: it is a
+  // Sobel pass over the mask field and nobody should pay for it by default.
+  const zoneEdgeOn =
+    zoneOn &&
+    (zn.edgeOnly || zn.edgeSize !== 1 || zn.edgeOpacity !== 1 || zn.edgeHue !== 0)
+  const zoneEdgeField = zoneEdgeOn ? maskEdgeField(maps, mk) : null
+
   // A reveal at full amount is the resting state, and skipping it there keeps
   // every still image on exactly the path it was on before reveal existed.
   const revealOn = rv.amount < 0.999 || rv.invert
@@ -293,6 +300,15 @@ export function calculateElements(
     // how hard the zone overrides bite in this cell
     const zw = zoneOn ? (zn.outside ? 1 - zoneF : zoneF) * zn.strength : 0
     const zoneBites = zw > 0.002
+
+    // ...and how close it sits to the selection's border. The outline ignores
+    // INVERT ZONE on purpose: an edge is an edge from either side of it.
+    let ew = 0
+    if (zoneEdgeField) {
+      ew = clamp01(sampleEdge(maps, zoneEdgeField, cell.x, cell.y, zn.edgeThickness)) * zn.strength
+      if (zn.edgeOnly && ew <= 0.02) continue
+    }
+    const edgeBites = ew > 0.002
 
     // ---- levels -----------------------------------------------------
     const v = applyLevels(sourceValue(rawLum, rawAlpha, settings.source.mode), settings.source)
@@ -409,6 +425,7 @@ export function calculateElements(
     if (revealF < 0.999) size *= lerp(0.35, 1, revealF)
     if (densityF < 0.999) size *= lerp(0.25, 1, densityF)
     if (zoneBites && zn.sizeScale !== 1) size *= 1 + (zn.sizeScale - 1) * zw
+    if (edgeBites && zn.edgeSize !== 1) size *= 1 + (zn.edgeSize - 1) * ew
     if (sz.clamp) size = Math.min(size, Math.min(cell.cw, cell.ch) * 1.25)
     if (size <= 0.05) continue
 
@@ -448,6 +465,7 @@ export function calculateElements(
     if (mk.enabled) alpha *= maskF
     alpha *= revealF * densityF
     if (zoneBites && zn.opacityScale !== 1) alpha *= 1 + (zn.opacityScale - 1) * zw
+    if (edgeBites && zn.edgeOpacity !== 1) alpha *= 1 + (zn.edgeOpacity - 1) * ew
     alpha = clamp01(alpha)
     if (alpha <= 0.004) continue
 
@@ -497,9 +515,12 @@ export function calculateElements(
     }
     // The zone recolours whatever the colour mode produced, so it works the
     // same on a solid fill, a gradient and colours sampled from the photo.
-    if (zoneTintsColour && zoneBites) {
-      zoneAdj.hueShift = zn.hueShift * zw
-      zoneAdj.saturation = zn.saturation * zw
+    const tintsHere = (zoneTintsColour && zoneBites) || (edgeBites && zn.edgeHue !== 0)
+    if (tintsHere) {
+      zoneAdj.hueShift =
+        (zoneTintsColour && zoneBites ? zn.hueShift * zw : 0) +
+        (edgeBites ? zn.edgeHue * ew : 0)
+      zoneAdj.saturation = zoneTintsColour && zoneBites ? zn.saturation * zw : 0
       applyAdjust(cr, cg, cb, zoneAdj, tmpColor)
       cr = tmpColor[0]
       cg = tmpColor[1]
@@ -748,6 +769,51 @@ function maskField(maps: SourceMaps, mk: EditorSettings['mask']): Uint8Array {
   return data
 }
 
+let edgeFieldCache = new WeakMap<SourceMaps, { key: string; data: Float32Array }>()
+
+/**
+ * Sobel over the mask field: where the selection starts and stops.
+ *
+ * Built from `maskField` rather than from luminance, so it is the border of
+ * *what you picked* — which is the thing worth outlining. Same 0..1 shape as
+ * the luminance edge map, so `sampleEdge` reads it unchanged.
+ */
+function maskEdgeField(maps: SourceMaps, mk: EditorSettings['mask']): Float32Array {
+  const key = maskKey(maps, mk)
+  const hit = edgeFieldCache.get(maps)
+  if (hit && hit.key === key) return hit.data
+
+  const field = maskField(maps, mk)
+  const w = maps.width
+  const h = maps.height
+  const out = new Float32Array(w * h)
+  let max = 0
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x
+      const tl = field[i - w - 1]
+      const t = field[i - w]
+      const tr = field[i - w + 1]
+      const l = field[i - 1]
+      const r = field[i + 1]
+      const bl = field[i + w - 1]
+      const b = field[i + w]
+      const br = field[i + w + 1]
+      const gx = tr + 2 * r + br - (tl + 2 * l + bl)
+      const gy = bl + 2 * b + br - (tl + 2 * t + tr)
+      const m = Math.sqrt(gx * gx + gy * gy)
+      out[i] = m
+      if (m > max) max = m
+    }
+  }
+  if (max > 0) {
+    const inv = 1 / max
+    for (let i = 0; i < out.length; i++) out[i] *= inv
+  }
+  edgeFieldCache.set(maps, { key, data: out })
+  return out
+}
+
 function fieldToCanvas(
   maps: SourceMaps,
   field: Uint8Array,
@@ -797,6 +863,7 @@ export function invalidateSilhouetteCache(): void {
   silCache = new WeakMap()
   alphaCache = new WeakMap()
   fieldCache = new WeakMap()
+  edgeFieldCache = new WeakMap()
 }
 
 /* ------------------------------------------------------------------ */

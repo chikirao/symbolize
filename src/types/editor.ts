@@ -190,6 +190,13 @@ export interface EditorSettings {
     saturation: number // -1..1
     gradientOffset: number // -1..1, rolls the LUT inside the zone only
     motionAmount: number // image px of displacement added inside the zone
+    /** the border of the selection, treated as its own thing */
+    edgeThickness: number // image px the outline reaches
+    edgeSize: number // multiplier on cells sitting on the border
+    edgeOpacity: number
+    edgeHue: number // degrees
+    /** keep only the outline and drop everything else */
+    edgeOnly: boolean
   }
   edges: {
     enabled: boolean

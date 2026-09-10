@@ -197,6 +197,11 @@ export const ANIMATABLE_PARAMS: AnimatableParam[] = [
   n('zone.saturation', 'ZONE SATURATION', 'ZONE', -1, 1, 0.01, 2),
   n('zone.gradientOffset', 'ZONE GRADIENT', 'ZONE', -1, 1, 0.001, 3),
   n('zone.motionAmount', 'ZONE MOTION', 'ZONE', 0, 200, 0.5, 1, 'elements', 'px'),
+  n('zone.edgeThickness', 'EDGE THICKNESS', 'ZONE', 0, 24, 0.5, 1, 'elements', 'px'),
+  n('zone.edgeSize', 'EDGE SIZE', 'ZONE', 0, 3, 0.01, 2, 'elements', 'x'),
+  n('zone.edgeOpacity', 'EDGE OPACITY', 'ZONE', 0, 3, 0.01, 2, 'elements', 'x'),
+  a('zone.edgeHue', 'EDGE HUE', 'ZONE', -720, 720),
+  b('zone.edgeOnly', 'EDGE ONLY', 'ZONE'),
   b('zone.enabled', 'ZONE ON', 'ZONE'),
   b('zone.outside', 'ZONE OUTSIDE', 'ZONE'),
 

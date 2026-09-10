@@ -92,6 +92,25 @@ export const ANIM_PRESETS: AnimPreset[] = [
     ],
   },
   {
+    id: 'zone-outline',
+    name: 'ZONE OUTLINE',
+    note: 'only the border of the selection, with colour running along it',
+    tracks: [
+      ...ZONE_ON,
+      { path: 'zone.strength', keys: [{ at: 0, value: 1, easing: 'linear' }] },
+      { path: 'zone.edgeOnly', keys: [{ at: 0, value: 'true', easing: 'hold' }] },
+      { path: 'zone.edgeSize', keys: [{ at: 0, value: 1.6, easing: 'linear' }] },
+      { path: 'zone.edgeThickness', keys: [ease(0, 1.5), ease(0.5, 6), ease(1, 1.5)] },
+      {
+        path: 'zone.edgeHue',
+        keys: [
+          { at: 0, value: 0, easing: 'linear' },
+          { at: 1, value: 360, easing: 'linear' },
+        ],
+      },
+    ],
+  },
+  {
     id: 'zone-spot',
     name: 'ZONE SPOT',
     note: 'everything but the zone drains to grey and steps back',

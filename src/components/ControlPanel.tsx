@@ -456,6 +456,16 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         <ParamSlider path="zone.saturation" label="SATURATION" min={-1} max={1} step={0.01} decimals={2} />
         <ParamSlider path="zone.gradientOffset" label="GRADIENT" min={-1} max={1} step={0.001} decimals={3} />
         <ParamSlider path="zone.motionAmount" label="MOTION" min={0} max={200} step={0.5} decimals={1} suffix="px" />
+        <div className="hr text-xxs my-1 select-none">── OUTLINE {'─'.repeat(38)}</div>
+        <ParamToggle
+          path="zone.edgeOnly"
+          label="OUTLINE ONLY"
+          hint="keep just the border of the selection and drop everything else"
+        />
+        <ParamSlider path="zone.edgeThickness" label="THICKNESS" min={0} max={24} step={0.5} decimals={1} suffix="px" />
+        <ParamSlider path="zone.edgeSize" label="EDGE SIZE" min={0} max={3} step={0.01} decimals={2} suffix="x" />
+        <ParamSlider path="zone.edgeOpacity" label="EDGE OPACITY" min={0} max={3} step={0.01} decimals={2} suffix="x" />
+        <ParamSlider path="zone.edgeHue" label="EDGE HUE" min={-360} max={360} step={1} decimals={0} suffix="d" />
         <div className="pl-3 text-xxs text-fg3 mt-1 leading-snug">
           {settings.mask.enabled
             ? settings.mask.mode === 'select'

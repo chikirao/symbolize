@@ -137,7 +137,7 @@ instead of only gating them. One selection, two uses, no second picker UI.
       through a clip, which is the wrong kind of clever for a tool with no undo of its own.
 
 ### Z3 — more zones, once video zones are cheap
-- [ ] zone edge as its own thing: outline the selection with symbols, animate the outline
+- [x] zone edge as its own thing: outline the selection with symbols, animate the outline
 - [ ] second and third zone (`zones[]` rather than one `zone`), each with its own picks and its
       own overrides. One zone works end to end, so this is unblocked — it is just a bigger build
       than the video work above it.
