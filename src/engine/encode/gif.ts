@@ -9,7 +9,7 @@
  */
 
 import { ByteWriter } from './bytes'
-import { mapToIndices, medianCut, sampleColors } from './quantize'
+import { mapToIndices, medianCut, sampleColors, type Palette } from './quantize'
 
 export interface GifOptions {
   width: number
@@ -22,7 +22,31 @@ export interface GifOptions {
   /** palette size per frame, 2..256 */
   maxColors?: number
   alphaCutoff?: number
+  /**
+   * One table for the whole animation instead of one per frame.
+   *
+   * Per-frame palettes track each frame exactly, which is usually better — but
+   * on a gradient the chosen colours shift slightly from frame to frame and
+   * the whole field shimmers. A shared table cannot shimmer. Build it with
+   * `buildGlobalPalette` from a handful of frames spread across the clip.
+   */
+  globalPalette?: Palette | null
 }
+
+/** Median cut over colours sampled from several frames at once. */
+export function buildGlobalPalette(samples: Uint8Array[], maxColors: number): Palette {
+  let total = 0
+  for (const part of samples) total += part.length
+  const merged = new Uint8Array(total)
+  let at = 0
+  for (const part of samples) {
+    merged.set(part, at)
+    at += part.length
+  }
+  return medianCut(merged, Math.max(2, Math.min(256, maxColors)))
+}
+
+export { sampleColors }
 
 const PALETTE_SAMPLES = 24_000
 
@@ -155,6 +179,28 @@ function cropRgba(
   return out
 }
 
+/** Smallest power-of-two table that holds `entries`, as GIF's size exponent. */
+function tableExponent(entries: number): number {
+  let exponent = 0
+  while (1 << (exponent + 1) < entries) exponent++
+  return exponent
+}
+
+function writeTable(out: ByteWriter, palette: Palette, exponent: number): void {
+  const size = 1 << (exponent + 1)
+  for (let i = 0; i < size; i++) {
+    if (i < palette.size) {
+      out.u8(palette.rgb[i * 3])
+      out.u8(palette.rgb[i * 3 + 1])
+      out.u8(palette.rgb[i * 3 + 2])
+    } else {
+      out.u8(0)
+      out.u8(0)
+      out.u8(0)
+    }
+  }
+}
+
 /* ------------------------------------------------------------------ */
 
 export class GifWriter {
@@ -165,6 +211,7 @@ export class GifWriter {
   private readonly transparent: boolean
   private readonly maxColors: number
   private readonly alphaCutoff: number
+  private readonly global: Palette | null
   private prev: Uint8ClampedArray | null = null
   private frames = 0
   private done = false
@@ -181,14 +228,24 @@ export class GifWriter {
     this.transparent = opts.transparent ?? false
     this.maxColors = Math.max(2, Math.min(256, Math.round(opts.maxColors ?? 256)))
     this.alphaCutoff = opts.alphaCutoff ?? 128
+    this.global = opts.globalPalette ?? null
 
     this.out.ascii('GIF89a')
     this.out.u16(this.width)
     this.out.u16(this.height)
-    // no global colour table: every frame carries its own
-    this.out.u8(0x70)
-    this.out.u8(0)
-    this.out.u8(0)
+    if (this.global) {
+      // one table up front; frames then carry no table of their own
+      const exponent = tableExponent(this.global.size + 1)
+      this.out.u8(0xf0 | exponent)
+      this.out.u8(0)
+      this.out.u8(0)
+      writeTable(this.out, this.global, exponent)
+    } else {
+      // no global colour table: every frame carries its own
+      this.out.u8(0x70)
+      this.out.u8(0)
+      this.out.u8(0)
+    }
 
     const loop = opts.loop ?? 0
     this.out.u8(0x21)
@@ -214,27 +271,53 @@ export class GifWriter {
     if (this.done) throw new Error('GIF ALREADY FINISHED')
 
     let rect: Rect = { x: 0, y: 0, w: this.width, h: this.height }
-    if (!this.transparent && this.prev) {
-      const changed = changedRect(this.prev, rgba, this.width, this.height)
+    const diffing = !this.transparent && this.prev !== null
+    if (diffing) {
+      const changed = changedRect(this.prev!, rgba, this.width, this.height)
       // an identical frame still has to occupy its slice of time: store a
       // single pixel rather than the whole picture again
       rect = changed ?? { x: 0, y: 0, w: 1, h: 1 }
     }
 
     const region = cropRgba(rgba, this.width, rect)
-    const reserveTransparent = this.transparent
+
+    // Inside the changed rectangle most pixels are still identical to the last
+    // frame. Marking those transparent leaves the previous frame showing
+    // through and gives LZW long runs of one code to chew on.
+    let skip: Uint8Array | null = null
+    if (diffing) {
+      skip = new Uint8Array(rect.w * rect.h)
+      const prev = this.prev!
+      let unchanged = 0
+      for (let y = 0; y < rect.h; y++) {
+        for (let x = 0; x < rect.w; x++) {
+          const src = ((rect.y + y) * this.width + rect.x + x) * 4
+          if (
+            prev[src] === rgba[src] &&
+            prev[src + 1] === rgba[src + 1] &&
+            prev[src + 2] === rgba[src + 2] &&
+            prev[src + 3] === rgba[src + 3]
+          ) {
+            skip[y * rect.w + x] = 1
+            unchanged++
+          }
+        }
+      }
+      // every pixel changed: the mask would cost a palette slot for nothing
+      if (unchanged === 0) skip = null
+    }
+
+    const reserveTransparent = this.transparent || skip !== null
     const colors = Math.max(2, this.maxColors - (reserveTransparent ? 1 : 0))
-    const palette = medianCut(
-      sampleColors(region, PALETTE_SAMPLES, reserveTransparent ? this.alphaCutoff : 0),
-      colors,
-    )
+    const palette =
+      this.global ??
+      medianCut(
+        sampleColors(region, PALETTE_SAMPLES, this.transparent ? this.alphaCutoff : 0),
+        colors,
+      )
 
     const transparentIndex = reserveTransparent ? palette.size : -1
-    const entries = palette.size + (reserveTransparent ? 1 : 0)
-
-    let exponent = 0
-    while (1 << (exponent + 1) < entries) exponent++
-    const tableSize = 1 << (exponent + 1)
+    const exponent = tableExponent(palette.size + (reserveTransparent ? 1 : 0))
     const minCodeSize = Math.max(2, exponent + 1)
 
     const indices = mapToIndices(region, palette, {
@@ -243,6 +326,7 @@ export class GifWriter {
       alphaCutoff: this.alphaCutoff,
       transparentIndex,
       dither: this.dither,
+      skip,
     })
 
     // --- graphic control extension ---
@@ -258,24 +342,14 @@ export class GifWriter {
     this.out.u8(transparentIndex >= 0 ? transparentIndex : 0)
     this.out.u8(0)
 
-    // --- image descriptor + local colour table ---
+    // --- image descriptor, plus a local table when there is no global one ---
     this.out.u8(0x2c)
     this.out.u16(rect.x)
     this.out.u16(rect.y)
     this.out.u16(rect.w)
     this.out.u16(rect.h)
-    this.out.u8(0x80 | exponent)
-    for (let i = 0; i < tableSize; i++) {
-      if (i < palette.size) {
-        this.out.u8(palette.rgb[i * 3])
-        this.out.u8(palette.rgb[i * 3 + 1])
-        this.out.u8(palette.rgb[i * 3 + 2])
-      } else {
-        this.out.u8(0)
-        this.out.u8(0)
-        this.out.u8(0)
-      }
-    }
+    this.out.u8(this.global ? 0x00 : 0x80 | exponent)
+    if (!this.global) writeTable(this.out, palette, exponent)
 
     this.out.u8(minCodeSize)
     writeSubBlocks(this.out, lzwEncode(indices, minCodeSize))

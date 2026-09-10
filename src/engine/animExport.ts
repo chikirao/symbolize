@@ -9,7 +9,8 @@ import { renderCompositeAsync } from './renderer'
 import { evaluateFrame } from './animation'
 import { frameSource, type SourceSequence } from './sequence'
 import { clampExportSize } from './export'
-import { GifWriter } from './encode/gif'
+import { GifWriter, buildGlobalPalette, sampleColors } from './encode/gif'
+import type { Palette } from './encode/quantize'
 import { ApngWriter, canWriteApng } from './encode/apng'
 import { ZipWriter } from './encode/zip'
 import { WebmWriter, pickWebmCodec } from './encode/webm'
@@ -23,6 +24,10 @@ export type AnimFormat = 'gif' | 'apng' | 'webm' | 'zip'
  */
 export const MAX_ANIM_FRAMES = 600
 export const MAX_ANIM_PIXELS = 240_000_000
+
+/** frames sampled to build a shared GIF palette, and pixels taken from each */
+const PALETTE_PROBE_FRAMES = 8
+const PALETTE_PROBE_SAMPLES = 12_000
 
 export interface AnimExportRequest {
   settings: EditorSettings
@@ -44,6 +49,8 @@ export interface AnimExportRequest {
   dither: boolean
   transparent: boolean
   maxColors: number
+  /** one colour table for the whole GIF instead of one per frame */
+  globalPalette: boolean
   /** webm only, bits per second */
   bitrate: number
   signal?: AbortSignal
@@ -112,7 +119,13 @@ async function canvasPng(canvas: HTMLCanvasElement): Promise<Uint8Array> {
   return new Uint8Array(await blob.arrayBuffer())
 }
 
-function makeSink(req: AnimExportRequest, w: number, h: number, frames: number): Sink {
+function makeSink(
+  req: AnimExportRequest,
+  w: number,
+  h: number,
+  frames: number,
+  globalPalette: Palette | null,
+): Sink {
   switch (req.format) {
     case 'gif': {
       const gif = new GifWriter({
@@ -121,6 +134,7 @@ function makeSink(req: AnimExportRequest, w: number, h: number, frames: number):
         dither: req.dither,
         transparent: req.transparent,
         maxColors: req.maxColors,
+        globalPalette,
       })
       return {
         needsPixels: true,
@@ -186,19 +200,15 @@ export async function renderAnimation(req: AnimExportRequest): Promise<AnimExpor
   if (!ctx) throw new Error('CANVAS CONTEXT UNAVAILABLE')
 
   if (req.format === 'webm') await pickWebmCodec(w, h)
-  const sink = makeSink(req, w, h, frames)
-  const delay = 1000 / Math.max(1, req.fps)
 
-  for (let i = 0; i < frames; i++) {
-    if (req.signal?.aborted) throw new Error('EXPORT CANCELLED')
-    const frame = from + i
+  const drawFrame = async (
+    frame: number,
+    onProgress?: (p: number) => void,
+  ): Promise<void> => {
     const settings = evaluateFrame(req.settings, req.project, frame)
     const source = req.sequence ? frameSource(req.sequence, frame) : null
     const maps = source ? source.maps : req.maps
     const original: CanvasImageSource | null = source ? source.canvas : req.original
-
-    const base = i / frames
-    const span = 1 / frames
     await renderCompositeAsync(
       {
         ctx,
@@ -211,7 +221,51 @@ export async function renderAnimation(req: AnimExportRequest): Promise<AnimExpor
         customSymbols: req.customSymbols,
         textSymbols: req.textSymbols,
       },
-      (p) => req.onProgress?.(base + p * span * 0.85, `FRAME ${i + 1}/${frames}`),
+      onProgress,
+    )
+  }
+
+  /**
+   * A shared colour table has to exist before the first frame is written, so
+   * it needs a look at the animation first. Rendering everything twice would
+   * double the export; a handful of frames spread across the clip describes
+   * its palette well enough and costs a few per cent.
+   */
+  let globalPalette: Palette | null = null
+  if (req.format === 'gif' && req.globalPalette) {
+    const probes = Math.min(frames, PALETTE_PROBE_FRAMES)
+    const samples: Uint8Array[] = []
+    for (let i = 0; i < probes; i++) {
+      if (req.signal?.aborted) throw new Error('EXPORT CANCELLED')
+      const frame = from + Math.round((i * (frames - 1)) / Math.max(1, probes - 1))
+      await drawFrame(frame)
+      samples.push(
+        sampleColors(
+          ctx.getImageData(0, 0, w, h).data,
+          PALETTE_PROBE_SAMPLES,
+          req.transparent ? 128 : 0,
+        ),
+      )
+      req.onProgress?.((0.06 * (i + 1)) / probes, `READING COLOURS ${i + 1}/${probes}`)
+    }
+    globalPalette = buildGlobalPalette(
+      samples,
+      Math.max(2, req.maxColors - (req.transparent ? 1 : 0)),
+    )
+  }
+
+  const sink = makeSink(req, w, h, frames, globalPalette)
+  const delay = 1000 / Math.max(1, req.fps)
+  const head = globalPalette ? 0.06 : 0
+
+  for (let i = 0; i < frames; i++) {
+    if (req.signal?.aborted) throw new Error('EXPORT CANCELLED')
+    const frame = from + i
+
+    const base = head + (i / frames) * (1 - head)
+    const span = (1 / frames) * (1 - head)
+    await drawFrame(frame, (p) =>
+      req.onProgress?.(base + p * span * 0.85, `FRAME ${i + 1}/${frames}`),
     )
 
     if (req.signal?.aborted) throw new Error('EXPORT CANCELLED')

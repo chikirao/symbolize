@@ -220,9 +220,14 @@ control is already declared, and let everything else be basic by default.
       the `view` block of `store/editorStore.ts`.
 
 ### R4 — GIF quality
-- [ ] optional global palette built from a sample of every frame: bigger first pass, but no
-      palette flicker between frames on gradients
-- [ ] per-pixel transparency for unchanged pixels inside the diff rectangle
+- [x] optional shared colour table (`ONE PALETTE`), built in a pre-pass over eight frames spread
+      across the clip rather than all of them — a few per cent of extra render, not double.
+      Measured on a 20-frame gradient clip: **55 KB -> 38 KB**, and no per-frame palette to shift
+      under a gradient. Frames then carry no local table at all.
+- [x] per-pixel transparency for unchanged pixels inside the diff rectangle. Measured on the same
+      clip: each frame after the first stores a 64x52 rectangle (4% of the canvas), and **58% of
+      that rectangle** is now written as "leave the previous frame showing" rather than a colour.
+      Those pixels are also kept out of the dither's error diffusion, since nothing is drawn there.
 
 ### R5 — timeline UX
 - [ ] onion skin: draw the previous and next keyed frame faintly under the current one

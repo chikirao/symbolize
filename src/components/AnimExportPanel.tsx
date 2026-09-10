@@ -17,7 +17,7 @@ import { NumberField, Row, Scramble, SelectControl, Toggle } from './Primitives'
 type ScaleMode = '1' | '2' | '4' | 'custom'
 
 const FORMAT_NOTE: Record<AnimFormat, string> = {
-  gif: 'EVERYWHERE :: 256 COLOURS PER FRAME :: 1-BIT ALPHA',
+  gif: 'EVERYWHERE :: 256 COLOURS :: 1-BIT ALPHA',
   webm: 'SMALL AND SHARP :: NO ALPHA :: NEEDS WEBCODECS',
   apng: 'TRUE COLOUR + FULL ALPHA :: LARGER FILES',
   zip: 'ONE PNG PER FRAME :: FOR AFTER EFFECTS / FFMPEG',
@@ -42,6 +42,7 @@ export function AnimExportPanel() {
   const [to, setTo] = useState(project.durationFrames - 1)
   const [colors, setColors] = useState(256)
   const [dither, setDither] = useState(true)
+  const [globalPalette, setGlobalPalette] = useState(false)
   const [transparent, setTransparent] = useState(false)
   const [bitrate, setBitrate] = useState(6)
   const [busy, setBusy] = useState(false)
@@ -113,6 +114,7 @@ export function AnimExportPanel() {
         dither,
         transparent,
         maxColors: colors,
+        globalPalette,
         bitrate: Math.round(bitrate * 1_000_000),
         signal: controller.signal,
         onProgress: (p, message) => {
@@ -255,6 +257,12 @@ export function AnimExportPanel() {
             hint="1-bit transparency; turns off frame differencing so files get bigger"
           >
             <Toggle checked={transparent} label="ALPHA" onChange={setTransparent} />
+          </Row>
+          <Row
+            label="ONE PALETTE"
+            hint="one colour table for the whole clip: no shimmer on gradients, slightly slower"
+          >
+            <Toggle checked={globalPalette} label="ONE PALETTE" onChange={setGlobalPalette} />
           </Row>
         </>
       )}

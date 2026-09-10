@@ -192,6 +192,12 @@ export interface MapOptions {
   /** index reserved for transparent pixels, or -1 when the frame is opaque */
   transparentIndex: number
   dither: boolean
+  /**
+   * 1 for a pixel that should take the transparent index whatever its colour —
+   * how "this pixel did not change since the last frame" is expressed. Those
+   * pixels take no part in error diffusion either, since nothing is drawn.
+   */
+  skip?: Uint8Array | null
 }
 
 /**
@@ -204,14 +210,14 @@ export function mapToIndices(
   palette: Palette,
   opts: MapOptions,
 ): Uint8Array {
-  const { width, height, alphaCutoff, transparentIndex, dither } = opts
+  const { width, height, alphaCutoff, transparentIndex, dither, skip } = opts
   const mapper = new PaletteMapper(palette)
   const out = new Uint8Array(width * height)
 
   if (!dither) {
     for (let i = 0; i < out.length; i++) {
       const p = i * 4
-      if (transparentIndex >= 0 && rgba[p + 3] < alphaCutoff) {
+      if (transparentIndex >= 0 && (rgba[p + 3] < alphaCutoff || skip?.[i])) {
         out[i] = transparentIndex
         continue
       }
@@ -239,7 +245,7 @@ export function mapToIndices(
     for (let x = 0; x < width; x++) {
       const i = y * width + x
       const p = i * 4
-      if (transparentIndex >= 0 && rgba[p + 3] < alphaCutoff) {
+      if (transparentIndex >= 0 && (rgba[p + 3] < alphaCutoff || skip?.[i])) {
         out[i] = transparentIndex
         continue
       }
