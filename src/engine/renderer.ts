@@ -694,9 +694,17 @@ function paintBackground(
 
 /* --- mask field shared by the silhouette and the original-layer clip --- */
 
-let fieldCache: { key: string; maps: SourceMaps; data: Uint8Array } | null = null
-let silCache: { key: string; canvas: HTMLCanvasElement } | null = null
-let alphaCache: { key: string; canvas: HTMLCanvasElement } | null = null
+/**
+ * All three are per-`SourceMaps`, which for an animated source means per frame.
+ *
+ * The silhouette and the mask stencil used to be keyed on the mask signature
+ * alone, and that signature only carries the map *dimensions* — identical for
+ * every frame of a video. So frame 0's silhouette was handed back for the whole
+ * clip: not just slow, wrong. Keying on the maps object fixes both at once.
+ */
+let fieldCache = new WeakMap<SourceMaps, { key: string; data: Uint8Array }>()
+let silCache = new WeakMap<SourceMaps, { key: string; canvas: HTMLCanvasElement }>()
+let alphaCache = new WeakMap<SourceMaps, { key: string; canvas: HTMLCanvasElement }>()
 
 function maskKey(maps: SourceMaps, mk: EditorSettings['mask']): string {
   return [
@@ -717,7 +725,8 @@ function maskKey(maps: SourceMaps, mk: EditorSettings['mask']): string {
 /** The mask after threshold, feather and invert, as 0..255 at analysis size. */
 function maskField(maps: SourceMaps, mk: EditorSettings['mask']): Uint8Array {
   const key = maskKey(maps, mk)
-  if (fieldCache && fieldCache.maps === maps && fieldCache.key === key) return fieldCache.data
+  const hit = fieldCache.get(maps)
+  if (hit && hit.key === key) return hit.data
 
   const n = maps.width * maps.height
   const data = new Uint8Array(n)
@@ -735,7 +744,7 @@ function maskField(maps: SourceMaps, mk: EditorSettings['mask']): Uint8Array {
     if (mk.invert && mk.enabled) f = 1 - f
     data[i] = f * 255
   }
-  fieldCache = { key, maps, data }
+  fieldCache.set(maps, { key, data })
   return data
 }
 
@@ -766,26 +775,28 @@ function fieldToCanvas(
 function silhouetteCanvas(maps: SourceMaps, settings: EditorSettings): HTMLCanvasElement {
   const mk = settings.mask
   const key = maskKey(maps, mk) + '|' + mk.silhouette.color
-  if (silCache && silCache.key === key) return silCache.canvas
+  const hit = silCache.get(maps)
+  if (hit && hit.key === key) return hit.canvas
   const [r, g, b] = hexToRgb(mk.silhouette.color)
   const canvas = fieldToCanvas(maps, maskField(maps, mk), r, g, b)
-  silCache = { key, canvas }
+  silCache.set(maps, { key, canvas })
   return canvas
 }
 
 /** White stencil of the mask, used to knock the original layer in or out. */
 function maskAlphaCanvas(maps: SourceMaps, mk: EditorSettings['mask']): HTMLCanvasElement {
   const key = maskKey(maps, mk)
-  if (alphaCache && alphaCache.key === key) return alphaCache.canvas
+  const hit = alphaCache.get(maps)
+  if (hit && hit.key === key) return hit.canvas
   const canvas = fieldToCanvas(maps, maskField(maps, mk), 255, 255, 255)
-  alphaCache = { key, canvas }
+  alphaCache.set(maps, { key, canvas })
   return canvas
 }
 
 export function invalidateSilhouetteCache(): void {
-  silCache = null
-  alphaCache = null
-  fieldCache = null
+  silCache = new WeakMap()
+  alphaCache = new WeakMap()
+  fieldCache = new WeakMap()
 }
 
 /* ------------------------------------------------------------------ */

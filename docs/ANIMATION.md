@@ -122,13 +122,19 @@ instead of only gating them. One selection, two uses, no second picker UI.
 - [x] ZONE panel in the parameter list, next to the picker that already exists
 - [x] zone-driven animation presets: ZONE PULSE, ZONE HUE, ZONE RIPPLE, ZONE ONLY
 ### Z2 — zones on video, which is where they get expensive
-- [ ] `getSelectionMask` is cached on the `SourceMaps` identity, so an animated source misses the
-      cache on every single frame. Measure it first, then cache per frame index or narrow the
-      recompute to the picks that changed.
-- [ ] contiguous (magic-wand) selection re-floods per frame; consider seeding the flood from the
-      previous frame's result
-- [ ] a colour picked on frame 0 drifts as the video changes — decide whether tolerance should
-      widen automatically, or leave that to a keyframe on `mask.tolerance`
+- [x] `getSelectionMask` cached per `SourceMaps` (WeakMap) instead of one global slot, and the
+      frame cache sized by a memory budget instead of a fixed six entries. Measured on a 24-frame
+      320x240 clip, walking every frame three times: **3.87ms -> 0.001ms** per frame of combined
+      source-map + selection preparation, 1/72 cache hits -> 72/72.
+- [x] contiguous flood seeding — **measured and dropped.** The cold wand costs 0.22ms per frame
+      against 1.84ms for a cold colour range: the flood only visits the region it fills, so it was
+      never the expensive one. Seeding from the previous frame would make a frame's result depend
+      on the order frames were visited in, which breaks same-project-same-frame determinism, and it
+      would buy nothing measurable.
+- [x] colour drift on a moving clip — **left to a keyframe.** `mask.tolerance` is already in the
+      animatable registry, so widening it over time is a two-key track and stays visible and
+      reversible. Widening it automatically would silently change what a pick means halfway
+      through a clip, which is the wrong kind of clever for a tool with no undo of its own.
 
 ### Z3 — more zones, once video zones are cheap
 - [ ] zone edge as its own thing: outline the selection with symbols, animate the outline

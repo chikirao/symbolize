@@ -125,6 +125,11 @@ SOURCE MEDIA   @  FRAME           ->  SOURCE MAPS (cached)   -> the usual pipeli
 * `renderCompositeAsync` yields through a `MessageChannel` when the tab is hidden. `setTimeout` is
   clamped to ~1s in a background tab, which used to make a backgrounded export twenty times slower;
   keep that branch.
+* Anything cached on a `SourceMaps` must be keyed on the **object**, not on a signature built
+  from its dimensions. A still image has one `SourceMaps`; a video has one per frame with
+  identical dimensions, so a dimension-derived key silently serves frame 0's result for the whole
+  clip. `engine/selection.ts` and the three mask caches in `renderer.ts` use `WeakMap<SourceMaps,
+  …>` for exactly this reason.
 * New animation parameters must be **neutral at their defaults** so existing presets are unchanged,
   and must not consume new values from the per-cell PRNG — the draw order in `calculateElements` is
   an invariant (see Determinism above).

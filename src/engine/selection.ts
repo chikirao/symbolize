@@ -157,7 +157,16 @@ function buildWand(maps: SourceMaps, mask: EditorSettings['mask']): Uint8Array {
 
 /* ------------------------------------------------------------------ */
 
-let cache: { key: string; maps: SourceMaps; data: Uint8Array } | null = null
+/**
+ * Keyed on the maps object itself, not on one global slot.
+ *
+ * A still image only ever has one `SourceMaps`, so a single slot was fine. A
+ * video has one per frame, and the slot then missed on every single frame —
+ * measured at 3.9ms per frame on a 320x240 analysis map, rebuilt from scratch
+ * each time even though the picks had not moved. A WeakMap gives every live
+ * frame its own entry and lets them die with the frames they belong to.
+ */
+let cache = new WeakMap<SourceMaps, { key: string; data: Uint8Array }>()
 
 function signature(mask: EditorSettings['mask']): string {
   return [
@@ -168,7 +177,7 @@ function signature(mask: EditorSettings['mask']): string {
 }
 
 export function invalidateSelectionCache(): void {
-  cache = null
+  cache = new WeakMap()
 }
 
 /**
@@ -182,9 +191,10 @@ export function getSelectionMask(
 ): Uint8Array | null {
   if (mask.source !== 'color' || mask.picks.length === 0) return null
   const key = signature(mask)
-  if (cache && cache.maps === maps && cache.key === key) return cache.data
+  const hit = cache.get(maps)
+  if (hit && hit.key === key) return hit.data
   const data = mask.contiguous ? buildWand(maps, mask) : buildColourRange(maps, mask)
-  cache = { key, maps, data }
+  cache.set(maps, { key, data })
   return data
 }
 
