@@ -7,6 +7,7 @@ import { residentFrames, sequenceBytes } from '../engine/sequence'
 import { loadDemoImage } from '../engine/demo'
 import { getSelectionMask } from '../engine/selection'
 import { useT } from '../i18n'
+import { useHistory } from '../store/historyStore'
 
 const THUMB_W = 108
 const THUMB_H = 78
@@ -261,7 +262,10 @@ export function SourcePanelBody(props: { onPickFile: () => void; onPaste: () => 
         <button
           type="button"
           className="btn text-xxs"
-          onClick={() => void loadDemoImage().then((c) => loadImageSource(c, 'DEMO_BUNNY.JPG'))}
+          onClick={() => void loadDemoImage().then((c) => {
+            loadImageSource(c, 'DEMO_BUNNY.JPG')
+            useHistory.getState().reset()
+          })}
         >
           {t('DEMO')}
         </button>

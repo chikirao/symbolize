@@ -66,6 +66,9 @@ interface UiStore {
   guide: boolean
   /** it has opened by itself once; it never does so again */
   guideSeen: boolean
+  /** the editor tour is on screen / has been offered on this browser */
+  tutorial: boolean
+  tutorialSeen: boolean
 
   setLang: (lang: Lang) => void
   toggleLang: () => void
@@ -74,6 +77,9 @@ interface UiStore {
   closeGuide: () => void
   /** open it only if it has never opened by itself before */
   offerGuide: () => void
+  openTutorial: () => void
+  closeTutorial: () => void
+  offerTutorial: () => void
 
   setPanel: (id: string, patch: Partial<PanelLayout>) => void
   togglePanel: (id: string) => void
@@ -106,11 +112,12 @@ interface Saved {
   lang?: Lang
   tips?: boolean
   guideSeen?: boolean
+  tutorialSeen?: boolean
   layout?: Partial<LayoutState>
 }
 
-function load(): { lang: Lang; tips: boolean; guideSeen: boolean; layout: LayoutState } {
-  const fallback = { lang: 'en' as Lang, tips: true, guideSeen: false, layout: DEFAULT_LAYOUT }
+function load(): { lang: Lang; tips: boolean; guideSeen: boolean; tutorialSeen: boolean; layout: LayoutState } {
+  const fallback = { lang: 'en' as Lang, tips: true, guideSeen: false, tutorialSeen: false, layout: DEFAULT_LAYOUT }
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return fallback
@@ -126,6 +133,7 @@ function load(): { lang: Lang; tips: boolean; guideSeen: boolean; layout: Layout
       lang: saved.lang === 'ru' ? 'ru' : 'en',
       tips: saved.tips !== false,
       guideSeen: !!saved.guideSeen,
+      tutorialSeen: !!saved.tutorialSeen,
       layout: {
         leftWidth: clampColumn(
           saved.layout?.leftWidth ?? DEFAULT_LAYOUT.leftWidth,
@@ -155,6 +163,7 @@ function persist(state: UiStore): void {
         lang: state.lang,
         tips: state.tips,
         guideSeen: state.guideSeen,
+        tutorialSeen: state.tutorialSeen,
         layout: state.layout,
       }),
     )
@@ -177,6 +186,8 @@ export const useUi = create<UiStore>((set, get) => {
     resizing: false,
     guide: false,
     guideSeen: initial.guideSeen,
+    tutorial: false,
+    tutorialSeen: initial.tutorialSeen,
 
     setLang: (lang) => {
       set({ lang })
@@ -196,6 +207,14 @@ export const useUi = create<UiStore>((set, get) => {
     offerGuide: () => {
       if (get().guideSeen) return
       get().openGuide()
+    },
+    openTutorial: () => {
+      set({ tutorial: true, tutorialSeen: true, guide: false })
+      after()
+    },
+    closeTutorial: () => set({ tutorial: false }),
+    offerTutorial: () => {
+      if (!get().tutorialSeen) get().openTutorial()
     },
 
     setPanel: (id, patch) => {

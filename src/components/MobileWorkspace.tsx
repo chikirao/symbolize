@@ -10,6 +10,7 @@ import { SourcePanel } from './SourcePanel'
 import { StatusBar } from './StatusBar'
 import { SymbolLibrary } from './SymbolLibrary'
 import { Timeline } from './Timeline'
+import { useUi } from '../store/uiStore'
 
 type MobilePanelId = 'image' | 'symbols' | 'presets' | 'params' | 'anim' | 'export'
 
@@ -25,6 +26,7 @@ const PANELS: { id: MobilePanelId; label: string; title: string }[] = [
 export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => void }) {
   const t = useT()
   const settings = useEditor((s) => s.settings)
+  const openTutorial = useUi((s) => s.openTutorial)
   const [active, setActive] = useState<MobilePanelId | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -110,6 +112,7 @@ export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => 
               key={panel.id}
               type="button"
               className="mobile-dock-button"
+              data-tour={'dock-' + panel.id}
               aria-pressed={selected}
               aria-controls={selected ? 'mobile-editor-panel' : undefined}
               onClick={() => setActive(selected ? null : panel.id)}
@@ -119,6 +122,9 @@ export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => 
             </button>
           )
         })}
+        <button type="button" className="mobile-dock-button" data-tour="dock-help" onClick={openTutorial} aria-label={t('EDITOR TOUR')}>
+          <span aria-hidden="true">[?]</span><span>{t('HELP')}</span>
+        </button>
       </nav>
     </div>
   )

@@ -3,6 +3,7 @@ import { useEditor } from '../store/editorStore'
 import { AsciiMeter } from './SliderControl'
 import { scrambleText } from '../ui/scramble'
 import { useMessageT, useT } from '../i18n'
+import { useHistory } from '../store/historyStore'
 
 export function StatusBar(props: { compact?: boolean; className?: string } = {}) {
   const t = useT()
@@ -12,6 +13,10 @@ export function StatusBar(props: { compact?: boolean; className?: string } = {})
   const image = useEditor((s) => s.image)
   const view = useEditor((s) => s.view)
   const interacting = useEditor((s) => s.interacting)
+  const canUndo = useHistory((s) => s.canUndo)
+  const canRedo = useHistory((s) => s.canRedo)
+  const undo = useHistory((s) => s.undo)
+  const redo = useHistory((s) => s.redo)
 
   const message = tm(status.message)
   const msgRef = useRef<HTMLSpanElement>(null)
@@ -30,6 +35,10 @@ export function StatusBar(props: { compact?: boolean; className?: string } = {})
   if (props.compact) {
     return (
       <div className={'mobile-status-bar ' + (props.className || '')}>
+        <span data-tour="history" className="mobile-history">
+          <button type="button" disabled={!canUndo} onClick={undo} aria-label={t('UNDO')} title={t('UNDO')}>↶</button>
+          <button type="button" disabled={!canRedo} onClick={redo} aria-label={t('REDO')} title={t('REDO')}>↷</button>
+        </span>
         <span className="mobile-status-message">
           {status.kind === 'error' ? t('ERROR') + ' :: ' : ''}
           <span ref={msgRef}>{message}</span>

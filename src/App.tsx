@@ -13,6 +13,8 @@ import { StatusBar } from './components/StatusBar'
 import { MobileWorkspace } from './components/MobileWorkspace'
 import { ColumnStrip, PanelBox, ResizeHandle } from './components/Panel'
 import { GuideOverlay } from './components/GuideOverlay'
+import { TutorialOverlay } from './components/TutorialOverlay'
+import { installHistoryPointerGrouping, useHistory } from './store/historyStore'
 import { useUi } from './store/uiStore'
 import { armIntro, runIntro } from './ui/intro'
 import { join, tr, useT } from './i18n'
@@ -44,6 +46,8 @@ export default function App() {
   const setLayout = useUi((s) => s.setLayout)
   const setPanel = useUi((s) => s.setPanel)
 
+  useEffect(() => installHistoryPointerGrouping(), [])
+
   useEffect(() => {
     const query = window.matchMedia(
       '(max-width: 899px), (pointer: coarse) and (max-width: 1199px)',
@@ -55,7 +59,10 @@ export default function App() {
 
   /* ---------------- first run ---------------- */
   useEffect(() => {
-    void loadDemoImage().then((canvas) => loadImageSource(canvas, 'DEMO_BUNNY.JPG'))
+    void loadDemoImage().then((canvas) => {
+      loadImageSource(canvas, 'DEMO_BUNNY.JPG')
+      useHistory.getState().reset()
+    })
 
     const root = document.getElementById('root')
     const w = window as unknown as {
@@ -73,6 +80,7 @@ export default function App() {
       if (started) return
       started = true
       void runIntro(root).then(() => {
+        useUi.getState().offerTutorial()
         setStatus({
           kind: 'ready',
           message: 'SYSTEM ONLINE :: DROP AN IMAGE, PRESS CTRL+V OR PICK A PRESET',
@@ -117,6 +125,7 @@ export default function App() {
         setStatus({ kind: 'busy', message: 'BUILDING SOURCE MAP...', progress: -1 })
         await new Promise((r) => setTimeout(r, 16))
         loadImageSource(canvas, (label || file.name || 'UNTITLED').toUpperCase())
+        useHistory.getState().reset()
         setStatus({ kind: 'ready', message: 'READY', progress: -1 })
       } catch (err) {
         setStatus({
@@ -168,6 +177,7 @@ export default function App() {
         sequence.name = (label || file.name || sequence.name).toUpperCase()
         loadSequence(sequence)
         useAnim.getState().syncToSequence(sequence.frames.length, sequence.fps)
+        useHistory.getState().reset()
         /* The first decoded clip is the moment this stops being a still-image
            editor, and nothing on screen says so. Once, then never again. */
         useUi.getState().offerGuide()
@@ -296,7 +306,20 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (useUi.getState().tutorial || useUi.getState().guide) return
+      if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+        const history = useHistory.getState()
+        if (e.key.toLowerCase() === 'z' && (e.shiftKey ? history.canRedo : history.canUndo)) {
+          e.preventDefault()
+          if (e.shiftKey) history.redo()
+          else history.undo()
+        } else if (e.key.toLowerCase() === 'y' && history.canRedo) {
+          e.preventDefault()
+          history.redo()
+        }
+        return
+      }
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key === 'f' || e.key === 'F') requestFit()
       else if (e.key === '0') setView({ zoom: 1, panX: 0, panY: 0 })
@@ -324,6 +347,7 @@ export default function App() {
     <div className="app-shell h-full w-full flex flex-col bg-black text-fg min-w-[900px]">
       <TransportClock />
       <GuideOverlay />
+      <TutorialOverlay mobile={mobileLayout} />
       <Toolbar onPickFile={pickFile} onPaste={pasteFromClipboard} />
 
       {mobileLayout ? (

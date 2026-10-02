@@ -457,6 +457,7 @@ export function CanvasViewport(props: { onPickFile: () => void }) {
 
   return (
     <AsciiBox
+      tour="canvas"
       className="flex-1 min-w-0 flex flex-col"
       bodyClassName="flex-1 min-h-0 flex"
       title={<span className="text-fg">{t('CANVAS')}</span>}

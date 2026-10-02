@@ -16,12 +16,13 @@ export function AsciiBox(props: {
   bodyClassName?: string
   /** panel geometry only — a dragged height or width, never decoration */
   style?: React.CSSProperties
+  tour?: string
   children?: React.ReactNode
 }) {
   const t = useT()
   const title = typeof props.title === 'string' ? t(props.title) : props.title
   return (
-    <div className={'ascii-box ' + (props.className || '')} style={props.style}>
+    <div className={'ascii-box ' + (props.className || '')} style={props.style} data-tour={props.tour}>
       <span className="ascii-corner tl" aria-hidden="true">
         ┌
       </span>

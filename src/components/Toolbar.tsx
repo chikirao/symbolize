@@ -6,6 +6,7 @@ import { loadDemoImage } from '../engine/demo'
 import { buildFilename, downloadBlob, renderExport } from '../engine/export'
 import type { PreviewQuality } from '../types/editor'
 import { useUi } from '../store/uiStore'
+import { useHistory } from '../store/historyStore'
 import { join, tr, useT } from '../i18n'
 
 interface Item {
@@ -49,7 +50,7 @@ function Menu(props: { label: string; items: Item[] }) {
   const width = Math.max(...items.map((i) => i.label.length), 10) + 4
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative" data-tour={'menu-' + props.label.toLowerCase()}>
       <button
         type="button"
         className="menu-btn text-xs2"
@@ -135,6 +136,11 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
   const setTips = useUi((s) => s.setTips)
   const resetLayout = useUi((s) => s.resetLayout)
   const openGuide = useUi((s) => s.openGuide)
+  const openTutorial = useUi((s) => s.openTutorial)
+  const canUndo = useHistory((s) => s.canUndo)
+  const canRedo = useHistory((s) => s.canRedo)
+  const undo = useHistory((s) => s.undo)
+  const redo = useHistory((s) => s.redo)
   const store = useEditor
   const image = useEditor((s) => s.image)
   const view = useEditor((s) => s.view)
@@ -200,9 +206,12 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
             { label: 'PASTE IMAGE  CTRL+V', onClick: props.onPaste },
             {
               label: 'LOAD DEMO',
-              onClick: () => void loadDemoImage().then((c) => loadImageSource(c, 'DEMO_BUNNY.JPG')),
+              onClick: () => void loadDemoImage().then((c) => {
+                loadImageSource(c, 'DEMO_BUNNY.JPG')
+                useHistory.getState().reset()
+              }),
             },
-            { label: 'CLEAR IMAGE', onClick: clearImage, disabled: !image },
+            { label: 'CLEAR IMAGE', onClick: () => { clearImage(); useHistory.getState().reset() }, disabled: !image },
             { label: '', divider: true },
             { label: 'RESET SETTINGS', onClick: resetAll },
           ]}
@@ -259,7 +268,10 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
             { label: 'PNG 4X', onClick: () => void quickExport(4), disabled: !image },
           ]}
         />
-        <Menu label="HELP" items={[{ label: 'HOW THE ANIMATION MODE WORKS', onClick: openGuide }]} />
+        <Menu label="HELP" items={[
+          { label: 'EDITOR TOUR', onClick: openTutorial },
+          { label: 'HOW THE ANIMATION MODE WORKS', onClick: openGuide },
+        ]} />
       </div>
 
       <div className="mobile-toolbar-actions ml-auto">
@@ -283,6 +295,10 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
       </div>
 
       <div className="desktop-toolbar-actions ml-auto flex items-center gap-3">
+        <span data-tour="history" className="flex items-center gap-1">
+          <button type="button" className="btn text-xxs" disabled={!canUndo} onClick={undo} title={t('UNDO') + ' (Ctrl+Z)'} aria-label={t('UNDO')}>{t('UNDO')}</button>
+          <button type="button" className="btn text-xxs" disabled={!canRedo} onClick={redo} title={t('REDO') + ' (Ctrl+Shift+Z)'} aria-label={t('REDO')}>{t('REDO')}</button>
+        </span>
         <button type="button" className="btn text-xxs" onClick={randomizeSeed}>
           {t('RANDOMIZE')}
         </button>

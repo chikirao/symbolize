@@ -447,6 +447,61 @@
     margin-top: 2px;
   }
 
+  /* --- editor tour --------------------------------------------------- */
+  .tutorial-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 260;
+    pointer-events: auto;
+  }
+  .tutorial-dim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.82);
+  }
+  .tutorial-focus {
+    position: absolute;
+    border: 2px solid var(--fg);
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.82);
+    pointer-events: none;
+  }
+  .tutorial-card {
+    position: absolute;
+    width: min(350px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    border: 1px solid var(--fg);
+    background: #000;
+    padding: 10px 12px 12px;
+    font-size: 12px;
+  }
+  .tutorial-head,
+  .tutorial-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .tutorial-head {
+    color: var(--fg3);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tutorial-title {
+    color: var(--fg);
+    letter-spacing: 0.1em;
+    margin: 10px 0 5px;
+  }
+  .tutorial-body {
+    color: var(--fg2);
+    line-height: 1.45;
+    margin-bottom: 14px;
+  }
+  .tutorial-actions {
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
+  }
+
   /* --- resizable / foldable panels ----------------------------------- */
 
   /* The seams are the gutters. They used to be a flex `gap`, which meant the
@@ -1248,6 +1303,20 @@
     user-select: none;
   }
 
+  .mobile-history {
+    display: flex;
+    align-self: stretch;
+    flex: 0 0 auto;
+    border-right: 1px solid var(--line);
+  }
+  .mobile-history button {
+    min-width: 32px;
+    color: var(--fg2);
+    font-size: 18px;
+    line-height: 1;
+  }
+  .mobile-history button:disabled { color: var(--off); }
+
   .mobile-status-message {
     flex: 1 1 auto;
     min-width: 0;
@@ -1264,7 +1333,7 @@
 
   .mobile-dock {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     width: 100%;
     min-height: calc(58px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
