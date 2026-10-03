@@ -8,15 +8,19 @@ build records for the animation mode and the interface work that followed it. Th
 ## Commands
 
 ```bash
-npm install       # Node 18+
+npm install       # Node 20+
 npm run dev        # http://localhost:5173
 npm run build       # tsc -b && vite build — the real check, run before calling anything done
 npm run typecheck    # tsc --noEmit, faster loop while iterating
+npx playwright install chromium  # first-time browser setup for tests
+npm test             # browser workflows, undo/redo, PNG and GIF/APNG round trips
 ```
 
-There is no test suite and no lint script. `npm run build` is the only gate — it must pass with
-zero TypeScript errors before a change is considered finished. Prefer it over `typecheck` alone
-right before wrapping up, since it also catches Vite/asset-resolution errors `typecheck` won't.
+There is no lint script. `npm run build` and `npm test` are the required gates. The Playwright
+suite in `tests/` uses a Vite dev server to exercise real browser UI, stores and media encoders.
+Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to use a system Chromium. Production build remains
+required because it catches TypeScript and asset-resolution errors the browser tests cannot.
+CI runs the tests for pull requests and gates GitHub Pages publication on their success.
 
 ## GitHub Pages deployment
 
@@ -205,5 +209,6 @@ follow that pattern for any new setting instead of adding a bespoke store action
    `RANDOMIZE SEED` and back, or compare two renders with an unchanged seed).
 4. If you touched an encoder or a decoder, round-trip it in the browser rather than trusting the
    spec: encode a few frames, read them back with our own reader *and* with the platform
-   (`<img>` for GIF/APNG, `<video>` for WebM), and compare pixels. There is no test suite, and a
-   container that is subtly wrong still produces a file.
+   (`ImageDecoder` / `<img>` for GIF/APNG, `<video>` for WebM), and compare pixels. The browser
+   suite covers GIF/APNG pixel and timing round trips; extend it for the case you changed.
+   A container that is subtly wrong still produces a file.

@@ -233,7 +233,14 @@ export function runIntro(root: HTMLElement, waveMs = WAVE_MS): Promise<void> {
   })
 }
 
-/** VIEW > REPLAY INTRO. */
+/** HELP > REPLAY INTRO replays the complete boot sequence without reloading the editor. */
+export function replayBoot(): void {
+  const boot = (window as unknown as { __replayBoot?: () => void }).__replayBoot
+  if (boot) boot()
+  else void replayIntro()
+}
+
+/** The reveal wave used after the boot screen hands over. */
 export function replayIntro(waveMs?: number): Promise<void> {
   const root = document.getElementById('root')
   if (!root) return Promise.resolve()

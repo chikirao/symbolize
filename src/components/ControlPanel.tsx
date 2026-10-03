@@ -7,12 +7,14 @@ import { ExportPanel } from './ExportPanel'
 import { SeedControl } from './SeedControl'
 import { useT } from '../i18n'
 import { SelectionPicker } from './SelectionPicker'
+import { ParameterSearch } from './ParameterSearch'
 
 const DEFAULT_OPEN = ['grid', 'size', 'color']
 
 export function ControlPanel(props: { includeExport?: boolean; singleOpen?: boolean } = {}) {
   const t = useT()
   const includeExport = props.includeExport ?? true
+  const [query, setQuery] = useState('')
   const [open, setOpen] = useState<string[]>(props.singleOpen ? ['grid'] : DEFAULT_OPEN)
   const toggle = useCallback((id: string) => {
     setOpen((cur) =>
@@ -41,7 +43,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
   return (
     <div
       className={
-        'h-full overflow-y-auto overflow-x-hidden' + (showAdvanced ? '' : ' hide-advanced')
+        'h-full overflow-y-auto overflow-x-hidden' + (showAdvanced || query.trim() ? '' : ' hide-advanced')
       }
     >
       {/* Stays put at the top of the scroll: the panel's plain set is the
@@ -67,6 +69,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         </button>
       </div>
 
+      <ParameterSearch query={query} onQuery={setQuery}>
       {/* ---------------- SOURCE ---------------- */}
       <Section id="source" title="SOURCE" open={isOpen('source')} onToggle={toggle}>
         <ParamSelect
@@ -761,6 +764,7 @@ export function ControlPanel(props: { includeExport?: boolean; singleOpen?: bool
         </Section>
       )}
 
+      </ParameterSearch>
       <div className="h-10" />
     </div>
   )

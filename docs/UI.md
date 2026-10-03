@@ -105,4 +105,5 @@ again. After that it is in `HELP` and behind a `[?]` in the timeline footer.
   `animatable.ts` registration.
 * Nothing about panel geometry or language belongs in `editorStore`: a saved preset must not carry
   someone's panel widths, and none of it should re-render the canvas.
-* `npm run build` is still the only gate, and it must exit clean.
+* `npm run build` and `npm test` must both exit clean. Browser checks cover first entry,
+  replay, parameter search, history, and media round trips.

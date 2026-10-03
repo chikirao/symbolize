@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useEditor } from '../store/editorStore'
 import { scrambleSubtree } from '../ui/scramble'
-import { replayIntro } from '../ui/intro'
+import { replayBoot } from '../ui/intro'
 import { loadDemoImage } from '../engine/demo'
 import { buildFilename, downloadBlob, renderExport } from '../engine/export'
 import type { PreviewQuality } from '../types/editor'
@@ -56,6 +56,7 @@ function Menu(props: { label: string; items: Item[] }) {
         className="menu-btn text-xs2"
         data-open={open ? '1' : '0'}
         aria-haspopup="menu"
+        aria-label={t(props.label)}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
@@ -256,8 +257,6 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
               onClick: () => setTips(!tips),
             },
             { label: 'RESET PANEL LAYOUT', onClick: resetLayout },
-            { label: '', divider: true },
-            { label: 'REPLAY INTRO', onClick: () => void replayIntro() },
           ]}
         />
         <Menu
@@ -271,6 +270,7 @@ export function Toolbar(props: { onPickFile: () => void; onPaste: () => void }) 
         <Menu label="HELP" items={[
           { label: 'EDITOR TOUR', onClick: openTutorial },
           { label: 'HOW THE ANIMATION MODE WORKS', onClick: openGuide },
+          { label: 'REPLAY INTRO', onClick: replayBoot },
         ]} />
       </div>
 

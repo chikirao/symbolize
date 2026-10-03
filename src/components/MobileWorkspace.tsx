@@ -11,8 +11,9 @@ import { StatusBar } from './StatusBar'
 import { SymbolLibrary } from './SymbolLibrary'
 import { Timeline } from './Timeline'
 import { useUi } from '../store/uiStore'
+import { replayBoot } from '../ui/intro'
 
-type MobilePanelId = 'image' | 'symbols' | 'presets' | 'params' | 'anim' | 'export'
+type MobilePanelId = 'image' | 'symbols' | 'presets' | 'params' | 'anim' | 'export' | 'help'
 
 const PANELS: { id: MobilePanelId; label: string; title: string }[] = [
   { id: 'image', label: 'IMAGE', title: 'IMAGE / SOURCE' },
@@ -27,6 +28,7 @@ export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => 
   const t = useT()
   const settings = useEditor((s) => s.settings)
   const openTutorial = useUi((s) => s.openTutorial)
+  const openGuide = useUi((s) => s.openGuide)
   const [active, setActive] = useState<MobilePanelId | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -42,7 +44,7 @@ export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => 
     return () => window.removeEventListener('keydown', onKey)
   }, [active])
 
-  const meta = PANELS.find((panel) => panel.id === active)
+  const meta = active === 'help' ? { title: 'HELP' } : PANELS.find((panel) => panel.id === active)
 
   return (
     <div className="mobile-workspace flex-1 min-h-0">
@@ -69,6 +71,13 @@ export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => 
             </header>
 
             <div ref={contentRef} className="mobile-sheet-content">
+              {active === 'help' && (
+                <div className="flex flex-col items-start gap-3">
+                  <button type="button" className="btn" onClick={() => { setActive(null); openTutorial() }}>{t('EDITOR TOUR')}</button>
+                  <button type="button" className="btn" onClick={() => { setActive(null); openGuide() }}>{t('HOW THE ANIMATION MODE WORKS')}</button>
+                  <button type="button" className="btn" aria-label={t('REPLAY INTRO')} onClick={() => { setActive(null); replayBoot() }}>{t('REPLAY INTRO')}</button>
+                </div>
+              )}
               {active === 'image' && (
                 <SourcePanel onPickFile={props.onPickFile} onPaste={props.onPaste} />
               )}
@@ -122,7 +131,7 @@ export function MobileWorkspace(props: { onPickFile: () => void; onPaste: () => 
             </button>
           )
         })}
-        <button type="button" className="mobile-dock-button" data-tour="dock-help" onClick={openTutorial} aria-label={t('EDITOR TOUR')}>
+        <button type="button" className="mobile-dock-button" data-tour="dock-help" onClick={() => setActive(active === 'help' ? null : 'help')} aria-label={t('HELP')} aria-pressed={active === 'help'}>
           <span aria-hidden="true">[?]</span><span>{t('HELP')}</span>
         </button>
       </nav>

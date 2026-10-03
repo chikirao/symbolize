@@ -73,7 +73,9 @@ function record() {
   }
   present = next
   future = []
-  grouped = group
+  // All writes in the current event form one action, including the first
+  // base key plus the current key created by AUTO KEY.
+  grouped = true
   liveGroup = editingLive
   sameTick = true
   queueMicrotask(() => {

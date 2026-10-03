@@ -340,6 +340,7 @@ export function Section(props: {
   children: React.ReactNode
   /** hidden wholesale while the panel is in its plain state */
   advanced?: boolean
+  lockedOpen?: boolean
 }) {
   const title = useT()(props.title)
   const titleRef = useRef<HTMLSpanElement>(null)
@@ -369,6 +370,7 @@ export function Section(props: {
         type="button"
         className="section-toggle w-full flex items-center gap-1 px-2 py-[3px] text-left hover:bg-[#111] group"
         aria-expanded={props.open}
+        disabled={props.lockedOpen}
         onClick={() => props.onToggle(props.id)}
       >
         <span className="text-fg2 group-hover:text-fg text-xs2">{props.open ? '[-]' : '[+]'}</span>

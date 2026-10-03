@@ -448,6 +448,25 @@
   }
 
   /* --- editor tour --------------------------------------------------- */
+  .parameter-search-bar {
+    display: flex;
+    gap: 4px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+  .parameter-search-bar input {
+    min-width: 0;
+    width: 100%;
+    border: 1px solid var(--line2);
+    padding: 5px;
+    font-size: 12px;
+  }
+  .parameter-search-status {
+    padding: 6px 8px;
+    font-size: 11px;
+    color: var(--fg2);
+  }
   .tutorial-overlay {
     position: fixed;
     inset: 0;

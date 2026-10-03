@@ -16,7 +16,7 @@ import { GuideOverlay } from './components/GuideOverlay'
 import { TutorialOverlay } from './components/TutorialOverlay'
 import { installHistoryPointerGrouping, useHistory } from './store/historyStore'
 import { useUi } from './store/uiStore'
-import { armIntro, runIntro } from './ui/intro'
+import { armIntro, runIntro, replayIntro } from './ui/intro'
 import { join, tr, useT } from './i18n'
 import { loadDemoImage } from './engine/demo'
 import { decodeMediaFile, isVideoFile, looksAnimated, releaseFrames } from './engine/media'
@@ -47,6 +47,11 @@ export default function App() {
   const setPanel = useUi((s) => s.setPanel)
 
   useEffect(() => installHistoryPointerGrouping(), [])
+  useEffect(() => {
+    const replay = () => { void replayIntro() }
+    window.addEventListener('symbolize:replay-intro', replay)
+    return () => window.removeEventListener('symbolize:replay-intro', replay)
+  }, [])
 
   useEffect(() => {
     const query = window.matchMedia(
@@ -69,8 +74,13 @@ export default function App() {
       __bootFinish?: () => void
       __introRun?: () => void
       __bootAlive?: boolean
+      __skipIntro?: boolean
     }
     if (!root) return
+    if (w.__skipIntro) {
+      useUi.getState().offerTutorial()
+      return
+    }
 
     // The interface is laid out immediately but stays dark: the boot screen
     // hands over on a keypress and the wave lights it up top to bottom.
@@ -104,7 +114,7 @@ export default function App() {
         clearInterval(poll)
       }
     }, 400)
-    const hard = window.setTimeout(start, 12_000)
+    const hard = window.setTimeout(() => { if (!w.__bootAlive) start() }, 12_000)
 
     return () => {
       clearInterval(poll)
@@ -305,6 +315,7 @@ export default function App() {
   /* ---------------- shortcuts ---------------- */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((window as unknown as { __bootAlive?: boolean }).__bootAlive) return
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
       if (useUi.getState().tutorial || useUi.getState().guide) return

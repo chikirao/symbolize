@@ -55,6 +55,17 @@
     <div id="root"></div>
     <script>
       (function () {
+        var bootTemplate = document.getElementById('boot').outerHTML;
+        var noiseTemplate = document.getElementById('boot-noise').outerHTML;
+        window.__replayBoot = function () {
+          if (window.__bootAlive) return;
+          document.getElementById('boot')?.remove();
+          document.getElementById('boot-noise')?.remove();
+          document.body.insertAdjacentHTML('afterbegin', bootTemplate + noiseTemplate);
+          runBoot(true);
+          window.__bootFinish();
+        };
+        function runBoot(replay) {
         var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         var boot = document.getElementById('boot');
         var stage = document.getElementById('boot-stage');
@@ -65,9 +76,16 @@
         var press = document.getElementById('boot-press');
         var noiseEl = document.getElementById('boot-noise');
         var start = Date.now();
-        var repeat = false;
-        try { repeat = sessionStorage.getItem('symbolize.booted') === '1'; sessionStorage.setItem('symbolize.booted', '1'); } catch (e) {}
-        var MIN = reduced ? 0 : (repeat ? 320 : 620);
+        var seen = false;
+        try { seen = localStorage.getItem('symbolize.introSeen.v1') === '1'; } catch (e) {}
+        if (seen && !replay) {
+          boot.remove();
+          noiseEl.remove();
+          window.__skipIntro = true;
+          window.__bootAlive = false;
+          return;
+        }
+        var MIN = reduced ? 0 : 620;
         var ru = false;
         try { ru = (JSON.parse(localStorage.getItem('symbolize.ui.v1') || '{}') || {}).lang === 'ru'; } catch (e) {}
         var lines = ru
@@ -149,6 +167,12 @@
           if (e && e.type === 'keydown' && (e.metaKey || e.ctrlKey || e.altKey)) return;
           // the same press that revealed the prompt should not also dismiss it
           if (Date.now() - promptAt < 150) return;
+          // This gesture belongs to the boot screen, including when reduced
+          // motion makes teardown synchronous. Never pass it to editor hotkeys.
+          if (e) {
+            if (e.cancelable && e.type !== 'wheel') e.preventDefault();
+            e.stopImmediatePropagation();
+          }
           handoff();
         }
 
@@ -194,6 +218,7 @@
           noiseEl.textContent = '';
           boot.style.opacity = '0';
           window.__bootAlive = false;
+          try { localStorage.setItem('symbolize.introSeen.v1', '1'); } catch (e) {}
           setTimeout(function () { if (boot && boot.parentNode) boot.parentNode.removeChild(boot); }, 140);
         }
 
@@ -210,7 +235,8 @@
           var run = function () {
             teardown();
             // the interface builds itself back out of the noise, top to bottom
-            if (typeof window.__introRun === 'function') window.__introRun();
+            if (replay) window.dispatchEvent(new Event('symbolize:replay-intro'));
+            else if (typeof window.__introRun === 'function') window.__introRun();
           };
           if (reduced) { run(); return; }
           // dissolve the prompt, then punch through with a burst of noise
@@ -235,6 +261,8 @@
           ready = true;
           setTimeout(showPrompt, Math.max(0, MIN - (Date.now() - start)));
         };
+        }
+        runBoot(false);
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
